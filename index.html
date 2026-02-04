@@ -703,6 +703,198 @@
         .btn-export-json { background: #9b59b6; color: white; }
         .btn-export-csv { background: #1abc9c; color: white; }
         .btn-reset { background: #e74c3c; color: white; margin-top: 20px; width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
+        
+        /* Dashboard Comisiones */
+        .comision-header {
+            background: linear-gradient(135deg, #27AE60, #2ECC71);
+            color: white;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .comision-gestor {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+        .comision-monto {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+        .comision-label {
+            font-size: 0.75rem;
+            opacity: 0.8;
+        }
+        
+        .meta-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .meta-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .meta-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        .meta-periodo {
+            font-size: 0.75rem;
+            color: #666;
+        }
+        .meta-progress-container {
+            background: #e0e0e0;
+            border-radius: 10px;
+            height: 20px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+        .meta-progress-bar {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: white;
+        }
+        .meta-progress-bar.low { background: linear-gradient(90deg, #e74c3c, #c0392b); }
+        .meta-progress-bar.medium { background: linear-gradient(90deg, #f39c12, #e67e22); }
+        .meta-progress-bar.high { background: linear-gradient(90deg, #27AE60, #2ECC71); }
+        .meta-progress-bar.exceeded { background: linear-gradient(90deg, #9b59b6, #8e44ad); }
+        
+        .meta-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+        }
+        .meta-cobrado { color: #27AE60; font-weight: 600; }
+        .meta-faltante { color: #e74c3c; }
+        .meta-objetivo { color: #666; }
+        
+        .gestor-tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+        .gestor-tab {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 20px;
+            background: #e0e0e0;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        .gestor-tab.active {
+            background: #1F4E79;
+            color: white;
+        }
+        
+        .cobros-semana {
+            margin-bottom: 15px;
+        }
+        .cobros-dia {
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            overflow: hidden;
+            border: 1px solid #eee;
+        }
+        .cobros-dia-header {
+            background: #f8f9fa;
+            padding: 10px 12px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .cobros-dia-header.today {
+            background: #e8f5e9;
+            color: #27AE60;
+        }
+        .cobros-dia-total {
+            color: #27AE60;
+        }
+        .cobros-dia-body {
+            display: none;
+            padding: 0;
+        }
+        .cobros-dia-body.active {
+            display: block;
+        }
+        .cobro-item-mini {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 12px;
+            font-size: 0.8rem;
+            border-top: 1px solid #f0f0f0;
+        }
+        .cobro-item-mini:first-child {
+            border-top: none;
+        }
+        
+        .resumen-semanal {
+            background: linear-gradient(135deg, #1F4E79, #2d6da3);
+            color: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .resumen-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            font-size: 0.85rem;
+        }
+        .resumen-row.total {
+            border-top: 1px solid rgba(255,255,255,0.3);
+            margin-top: 8px;
+            padding-top: 10px;
+            font-weight: 700;
+            font-size: 1rem;
+        }
+        .resumen-row.comision {
+            color: #90EE90;
+        }
+        
+        .history-tabs {
+            display: flex;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #eee;
+        }
+        .history-tab {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: none;
+            font-size: 0.85rem;
+            cursor: pointer;
+            color: #666;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+        }
+        .history-tab.active {
+            color: #1F4E79;
+            border-bottom-color: #1F4E79;
+            font-weight: 600;
+        }
+        .history-panel {
+            display: none;
+        }
+        .history-panel.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -786,21 +978,94 @@
         </div>
     </div>
     
-    <!-- Modal de Historial -->
+    <!-- Modal de Historial / Dashboard Comisiones -->
     <div class="modal modal-history" id="historyModal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width:450px;">
             <div class="modal-header">
-                <h3><i class="fas fa-history"></i> Cobros del Día</h3>
+                <h3><i class="fas fa-chart-line"></i> Dashboard de Cobranza</h3>
                 <button class="modal-close" onclick="closeHistory()">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="history-list" id="historyList"></div>
-                <button class="btn-export" onclick="exportPayments()">
-                    <i class="fas fa-share-alt"></i> Compartir Reporte
-                </button>
-                <button class="btn-export btn-danger" onclick="clearTestData()">
-                    <i class="fas fa-trash"></i> Limpiar datos de prueba
-                </button>
+                <!-- Tabs principales -->
+                <div class="history-tabs">
+                    <button class="history-tab active" onclick="switchHistoryTab('dashboard')">
+                        <i class="fas fa-tachometer-alt"></i> Mi Semana
+                    </button>
+                    <button class="history-tab" onclick="switchHistoryTab('equipo')">
+                        <i class="fas fa-users"></i> Equipo
+                    </button>
+                    <button class="history-tab" onclick="switchHistoryTab('historial')">
+                        <i class="fas fa-list"></i> Detalle
+                    </button>
+                </div>
+                
+                <!-- Panel Dashboard Personal -->
+                <div class="history-panel active" id="panelDashboard">
+                    <div class="comision-header">
+                        <div class="comision-gestor">Comisión de <span id="gestorActual">-</span></div>
+                        <div class="comision-monto" id="comisionSemana">$0</div>
+                        <div class="comision-label">Esta semana (40% de cobranza)</div>
+                    </div>
+                    
+                    <div class="meta-section">
+                        <div class="meta-header">
+                            <span class="meta-title">🎯 Meta Semanal: $10,000</span>
+                            <span class="meta-periodo" id="periodoSemana">-</span>
+                        </div>
+                        <div class="meta-progress-container">
+                            <div class="meta-progress-bar" id="metaProgressBar" style="width:0%">0%</div>
+                        </div>
+                        <div class="meta-stats">
+                            <span class="meta-cobrado">Cobrado: <span id="cobradoSemana">$0</span></span>
+                            <span class="meta-faltante">Falta: <span id="faltanteMeta">$10,000</span></span>
+                        </div>
+                    </div>
+                    
+                    <div class="cobros-semana" id="cobrosSemana"></div>
+                    
+                    <button class="btn-export" onclick="exportReporteSemanal()">
+                        <i class="fas fa-share-alt"></i> Compartir Mi Reporte
+                    </button>
+                </div>
+                
+                <!-- Panel Equipo -->
+                <div class="history-panel" id="panelEquipo">
+                    <div class="meta-section">
+                        <div class="meta-header">
+                            <span class="meta-title">📊 Resumen del Equipo</span>
+                            <span class="meta-periodo" id="periodoEquipo">-</span>
+                        </div>
+                    </div>
+                    
+                    <div id="rankingGestores"></div>
+                    
+                    <div class="resumen-semanal" id="resumenEquipo" style="margin-top:15px;">
+                        <div class="resumen-row">
+                            <span>Total Equipo:</span>
+                            <span id="totalEquipo">$0</span>
+                        </div>
+                        <div class="resumen-row">
+                            <span>Comisiones Totales:</span>
+                            <span id="comisionesEquipo">$0</span>
+                        </div>
+                    </div>
+                    
+                    <button class="btn-export" onclick="exportReporteEquipo()">
+                        <i class="fas fa-share-alt"></i> Compartir Reporte Equipo
+                    </button>
+                </div>
+                
+                <!-- Panel Historial Detallado -->
+                <div class="history-panel" id="panelHistorial">
+                    <div class="gestor-tabs" id="gestorTabs"></div>
+                    <div class="history-list" id="historyList"></div>
+                    <button class="btn-export" onclick="exportPayments()">
+                        <i class="fas fa-share-alt"></i> Compartir Detalle
+                    </button>
+                    <button class="btn-export btn-danger" onclick="clearTestData()">
+                        <i class="fas fa-trash"></i> Limpiar datos de prueba
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -1423,37 +1688,327 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
         
         // ===== HISTORIAL =====
         function showHistory() {
-            const today = new Date().toISOString().split('T')[0];
-            const list = document.getElementById('historyList');
-            let html = '';
-            let todayTotal = 0;
+            // Usar el último capturista como gestor actual
+            const gestor = lastCapturista || 'Sin asignar';
+            document.getElementById('gestorActual').textContent = gestor;
             
-            processedClients.forEach(c => {
-                getTodayPayments(c.Teléfono).forEach(p => {
-                    todayTotal += p.amount;
-                    html += `<div class="history-item">
-                        <div>
-                            <div class="history-client">${c.Cliente}</div>
-                            <div class="history-details">${p.date} · ${p.capturista || 'Sin capturista'}</div>
-                            ${p.note ? `<div class="history-details" style="font-style:italic;">${p.note}</div>` : ''}
-                        </div>
-                        <div class="history-amount">$${fmt(p.amount)}</div>
-                    </div>`;
+            // Calcular período de la semana (lunes a domingo)
+            const today = new Date();
+            const dayOfWeek = today.getDay();
+            const monday = new Date(today);
+            monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            
+            const formatShort = d => d.toLocaleDateString('es-MX', {day:'numeric', month:'short'});
+            const periodoText = `${formatShort(monday)} - ${formatShort(sunday)}`;
+            document.getElementById('periodoSemana').textContent = periodoText;
+            document.getElementById('periodoEquipo').textContent = periodoText;
+            
+            // Obtener pagos de la semana
+            const mondayStr = monday.toISOString().split('T')[0];
+            const sundayStr = sunday.toISOString().split('T')[0];
+            
+            const weekPayments = getWeekPayments(mondayStr, sundayStr);
+            const gestorPayments = weekPayments.filter(p => (p.capturista || 'Sin asignar') === gestor);
+            
+            // Calcular totales del gestor
+            const totalGestor = gestorPayments.reduce((s, p) => s + p.amount, 0);
+            const comision = totalGestor * 0.40;
+            const meta = 10000;
+            const porcentaje = Math.min(100, (totalGestor / meta) * 100);
+            const faltante = Math.max(0, meta - totalGestor);
+            
+            // Actualizar UI
+            document.getElementById('comisionSemana').textContent = '$' + fmt(comision);
+            document.getElementById('cobradoSemana').textContent = '$' + fmt(totalGestor);
+            document.getElementById('faltanteMeta').textContent = '$' + fmt(faltante);
+            
+            // Barra de progreso
+            const progressBar = document.getElementById('metaProgressBar');
+            progressBar.style.width = porcentaje + '%';
+            progressBar.textContent = porcentaje.toFixed(0) + '%';
+            progressBar.className = 'meta-progress-bar ' + 
+                (porcentaje >= 100 ? 'exceeded' : porcentaje >= 70 ? 'high' : porcentaje >= 40 ? 'medium' : 'low');
+            
+            // Renderizar cobros por día de la semana
+            renderCobrosSemana(gestorPayments, monday);
+            
+            // Renderizar ranking de equipo
+            renderEquipo(weekPayments);
+            
+            // Renderizar historial detallado
+            renderHistorialDetallado(weekPayments);
+            
+            document.getElementById('historyModal').classList.add('active');
+        }
+        
+        function getWeekPayments(startDate, endDate) {
+            const allPayments = [];
+            Object.entries(payments).forEach(([phone, clientPayments]) => {
+                const client = processedClients.find(c => c.Teléfono === phone) || 
+                               getActiveClients().find(c => c.Teléfono === phone);
+                clientPayments.forEach(p => {
+                    if (p.date >= startDate && p.date <= endDate) {
+                        allPayments.push({
+                            ...p,
+                            phone,
+                            clientName: client ? client.Cliente : 'Desconocido'
+                        });
+                    }
                 });
             });
+            return allPayments.sort((a, b) => b.date.localeCompare(a.date));
+        }
+        
+        function renderCobrosSemana(gestorPayments, monday) {
+            const container = document.getElementById('cobrosSemana');
+            const today = new Date().toISOString().split('T')[0];
+            const diasSemana = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
             
-            if (!html) {
-                html = '<div class="empty"><i class="fas fa-inbox"></i><p>Sin cobros hoy</p></div>';
-            } else {
-                html = `<div class="history-item" style="background:#e8f5e9;"><div><strong>TOTAL HOY</strong></div><div class="history-amount" style="font-size:1.1rem;">$${fmt(todayTotal)}</div></div>` + html;
+            let html = '';
+            for (let i = 0; i < 7; i++) {
+                const dia = new Date(monday);
+                dia.setDate(monday.getDate() + i);
+                const diaStr = dia.toISOString().split('T')[0];
+                const pagosDia = gestorPayments.filter(p => p.date === diaStr);
+                const totalDia = pagosDia.reduce((s, p) => s + p.amount, 0);
+                
+                if (pagosDia.length > 0 || diaStr <= today) {
+                    const isToday = diaStr === today;
+                    html += `
+                    <div class="cobros-dia">
+                        <div class="cobros-dia-header ${isToday ? 'today' : ''}" onclick="toggleDia(this)">
+                            <span>${diasSemana[i]} ${dia.getDate()} ${isToday ? '(HOY)' : ''}</span>
+                            <span class="cobros-dia-total">${pagosDia.length > 0 ? '$' + fmt(totalDia) : '-'}</span>
+                        </div>
+                        <div class="cobros-dia-body">
+                            ${pagosDia.length > 0 ? pagosDia.map(p => `
+                                <div class="cobro-item-mini">
+                                    <span>${p.clientName}</span>
+                                    <span>$${fmt(p.amount)}</span>
+                                </div>
+                            `).join('') : '<div style="padding:10px;text-align:center;color:#999;font-size:0.8rem;">Sin cobros</div>'}
+                        </div>
+                    </div>`;
+                }
             }
             
-            list.innerHTML = html;
-            document.getElementById('historyModal').classList.add('active');
+            container.innerHTML = html || '<div style="text-align:center;color:#999;padding:20px;">Sin cobros esta semana</div>';
+        }
+        
+        function toggleDia(header) {
+            header.nextElementSibling.classList.toggle('active');
+        }
+        
+        function renderEquipo(weekPayments) {
+            const gestores = {};
+            weekPayments.forEach(p => {
+                const g = p.capturista || 'Sin asignar';
+                if (!gestores[g]) gestores[g] = { total: 0, count: 0 };
+                gestores[g].total += p.amount;
+                gestores[g].count++;
+            });
+            
+            const ranking = Object.entries(gestores)
+                .map(([nombre, data]) => ({ nombre, ...data, comision: data.total * 0.40 }))
+                .sort((a, b) => b.total - a.total);
+            
+            const container = document.getElementById('rankingGestores');
+            
+            if (ranking.length === 0) {
+                container.innerHTML = '<div style="text-align:center;color:#999;padding:20px;">Sin cobros esta semana</div>';
+                return;
+            }
+            
+            container.innerHTML = ranking.map((g, i) => {
+                const porcMeta = Math.min(100, (g.total / 10000) * 100);
+                const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+                return `
+                <div style="background:white;border-radius:8px;padding:12px;margin-bottom:8px;border:1px solid #eee;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                        <span style="font-weight:600;">${medal} ${g.nombre}</span>
+                        <span style="color:#27AE60;font-weight:600;">$${fmt(g.total)}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:#666;">
+                        <span>${g.count} cobros</span>
+                        <span>Comisión: <strong style="color:#9b59b6;">$${fmt(g.comision)}</strong></span>
+                    </div>
+                    <div style="background:#e0e0e0;border-radius:4px;height:6px;margin-top:8px;">
+                        <div style="background:${porcMeta >= 100 ? '#9b59b6' : porcMeta >= 70 ? '#27AE60' : porcMeta >= 40 ? '#f39c12' : '#e74c3c'};height:100%;border-radius:4px;width:${porcMeta}%;"></div>
+                    </div>
+                </div>`;
+            }).join('');
+            
+            // Totales del equipo
+            const totalEquipo = ranking.reduce((s, g) => s + g.total, 0);
+            const comisionesEquipo = ranking.reduce((s, g) => s + g.comision, 0);
+            document.getElementById('totalEquipo').textContent = '$' + fmt(totalEquipo);
+            document.getElementById('comisionesEquipo').textContent = '$' + fmt(comisionesEquipo);
+        }
+        
+        function renderHistorialDetallado(weekPayments) {
+            // Tabs de gestores
+            const gestores = [...new Set(weekPayments.map(p => p.capturista || 'Sin asignar'))];
+            gestores.unshift('Todos');
+            
+            const tabsContainer = document.getElementById('gestorTabs');
+            tabsContainer.innerHTML = gestores.map((g, i) => 
+                `<button class="gestor-tab ${i === 0 ? 'active' : ''}" onclick="filterHistorialGestor('${g}')">${g}</button>`
+            ).join('');
+            
+            // Lista inicial (todos)
+            filterHistorialGestor('Todos');
+        }
+        
+        function filterHistorialGestor(gestor) {
+            // Actualizar tabs
+            document.querySelectorAll('.gestor-tab').forEach(t => {
+                t.classList.toggle('active', t.textContent === gestor);
+            });
+            
+            // Obtener pagos de la semana
+            const today = new Date();
+            const dayOfWeek = today.getDay();
+            const monday = new Date(today);
+            monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            
+            const weekPayments = getWeekPayments(
+                monday.toISOString().split('T')[0],
+                sunday.toISOString().split('T')[0]
+            );
+            
+            let filtered = gestor === 'Todos' ? weekPayments : 
+                weekPayments.filter(p => (p.capturista || 'Sin asignar') === gestor);
+            
+            const list = document.getElementById('historyList');
+            
+            if (filtered.length === 0) {
+                list.innerHTML = '<div class="empty"><i class="fas fa-inbox"></i><p>Sin cobros</p></div>';
+                return;
+            }
+            
+            const total = filtered.reduce((s, p) => s + p.amount, 0);
+            
+            list.innerHTML = `
+                <div class="history-item" style="background:#e8f5e9;">
+                    <div><strong>TOTAL ${gestor === 'Todos' ? 'SEMANA' : gestor}</strong></div>
+                    <div class="history-amount" style="font-size:1.1rem;">$${fmt(total)}</div>
+                </div>
+            ` + filtered.map(p => `
+                <div class="history-item">
+                    <div>
+                        <div class="history-client">${p.clientName}</div>
+                        <div class="history-details">${p.date} · ${p.capturista || 'Sin capturista'}</div>
+                        ${p.note ? `<div class="history-details" style="font-style:italic;">${p.note}</div>` : ''}
+                    </div>
+                    <div class="history-amount">$${fmt(p.amount)}</div>
+                </div>
+            `).join('');
+        }
+        
+        function switchHistoryTab(tab) {
+            document.querySelectorAll('.history-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.history-panel').forEach(p => p.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById('panel' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
         }
         
         function closeHistory() {
             document.getElementById('historyModal').classList.remove('active');
+        }
+        
+        function exportReporteSemanal() {
+            const gestor = lastCapturista || 'Sin asignar';
+            const today = new Date();
+            const dayOfWeek = today.getDay();
+            const monday = new Date(today);
+            monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            
+            const weekPayments = getWeekPayments(
+                monday.toISOString().split('T')[0],
+                sunday.toISOString().split('T')[0]
+            ).filter(p => (p.capturista || 'Sin asignar') === gestor);
+            
+            const total = weekPayments.reduce((s, p) => s + p.amount, 0);
+            const comision = total * 0.40;
+            const porcMeta = ((total / 10000) * 100).toFixed(0);
+            
+            let text = `📊 REPORTE SEMANAL DE COBRANZA\n`;
+            text += `👤 Gestor: ${gestor}\n`;
+            text += `📅 ${monday.toLocaleDateString('es-MX')} - ${sunday.toLocaleDateString('es-MX')}\n`;
+            text += `${'─'.repeat(30)}\n\n`;
+            text += `💰 Total Cobrado: $${fmt(total)}\n`;
+            text += `🎯 Meta: $10,000 (${porcMeta}%)\n`;
+            text += `💵 Comisión (40%): $${fmt(comision)}\n`;
+            text += `📝 Cobros realizados: ${weekPayments.length}\n\n`;
+            text += `${'─'.repeat(30)}\n`;
+            text += `LMV CREDIA SA DE CV`;
+            
+            if (navigator.share) {
+                navigator.share({title: 'Reporte Semanal', text: text});
+            } else {
+                navigator.clipboard.writeText(text);
+                showToast('📋 Copiado al portapapeles');
+            }
+        }
+        
+        function exportReporteEquipo() {
+            const today = new Date();
+            const dayOfWeek = today.getDay();
+            const monday = new Date(today);
+            monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            
+            const weekPayments = getWeekPayments(
+                monday.toISOString().split('T')[0],
+                sunday.toISOString().split('T')[0]
+            );
+            
+            const gestores = {};
+            weekPayments.forEach(p => {
+                const g = p.capturista || 'Sin asignar';
+                if (!gestores[g]) gestores[g] = { total: 0, count: 0 };
+                gestores[g].total += p.amount;
+                gestores[g].count++;
+            });
+            
+            const ranking = Object.entries(gestores)
+                .map(([nombre, data]) => ({ nombre, ...data, comision: data.total * 0.40 }))
+                .sort((a, b) => b.total - a.total);
+            
+            let text = `📊 REPORTE SEMANAL DEL EQUIPO\n`;
+            text += `📅 ${monday.toLocaleDateString('es-MX')} - ${sunday.toLocaleDateString('es-MX')}\n`;
+            text += `${'─'.repeat(30)}\n\n`;
+            
+            ranking.forEach((g, i) => {
+                const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '  ';
+                text += `${medal} ${g.nombre}\n`;
+                text += `   💰 $${fmt(g.total)} (${g.count} cobros)\n`;
+                text += `   💵 Comisión: $${fmt(g.comision)}\n\n`;
+            });
+            
+            const totalEquipo = ranking.reduce((s, g) => s + g.total, 0);
+            const comisionesEquipo = ranking.reduce((s, g) => s + g.comision, 0);
+            
+            text += `${'─'.repeat(30)}\n`;
+            text += `💰 TOTAL EQUIPO: $${fmt(totalEquipo)}\n`;
+            text += `💵 COMISIONES: $${fmt(comisionesEquipo)}\n`;
+            text += `${'─'.repeat(30)}\n`;
+            text += `LMV CREDIA SA DE CV`;
+            
+            if (navigator.share) {
+                navigator.share({title: 'Reporte Equipo', text: text});
+            } else {
+                navigator.clipboard.writeText(text);
+                showToast('📋 Copiado al portapapeles');
+            }
         }
         
         function exportPayments() {
