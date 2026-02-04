@@ -559,14 +559,163 @@
         
         .empty { text-align: center; padding: 40px; color: #999; }
         .empty i { font-size: 2.5rem; margin-bottom: 10px; }
+        
+        /* Panel Admin */
+        .modal-admin .modal-header { background: #34495e; }
+        .modal-admin .modal-content { max-width: 500px; max-height: 95vh; }
+        .admin-tabs {
+            display: flex;
+            border-bottom: 2px solid #eee;
+            margin-bottom: 15px;
+        }
+        .admin-tab {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: none;
+            font-size: 0.85rem;
+            cursor: pointer;
+            color: #666;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+        }
+        .admin-tab.active {
+            color: #1F4E79;
+            border-bottom-color: #1F4E79;
+            font-weight: 600;
+        }
+        .admin-panel { display: none; }
+        .admin-panel.active { display: block; }
+        
+        .admin-client-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        .admin-client-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            font-size: 0.85rem;
+        }
+        .admin-client-item:last-child { border-bottom: none; }
+        .admin-client-info { flex: 1; }
+        .admin-client-name { font-weight: 600; }
+        .admin-client-phone { font-size: 0.75rem; color: #666; }
+        .admin-client-saldo { font-weight: 600; color: #C00000; margin-right: 10px; }
+        .admin-btn-group { display: flex; gap: 5px; }
+        .admin-btn {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 5px;
+            font-size: 0.7rem;
+            cursor: pointer;
+        }
+        .admin-btn-edit { background: #3498db; color: white; }
+        .admin-btn-delete { background: #e74c3c; color: white; }
+        .admin-btn-add {
+            width: 100%;
+            padding: 12px;
+            background: #27AE60;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .admin-search {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+        .admin-stats {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            font-size: 0.8rem;
+        }
+        .admin-stat { text-align: center; }
+        .admin-stat-value { font-size: 1.2rem; font-weight: 700; color: #1F4E79; }
+        .admin-stat-label { color: #666; }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .form-group.full { grid-column: 1 / -1; }
+        
+        .admin-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .admin-actions button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-save-client { background: #27AE60; color: white; }
+        .btn-cancel { background: #bdc3c7; color: #333; }
+        
+        .import-section {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .import-section input[type="file"] { display: none; }
+        .import-btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #3498db;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .export-btns { display: flex; gap: 10px; }
+        .export-btns button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-export-json { background: #9b59b6; color: white; }
+        .btn-export-csv { background: #1abc9c; color: white; }
+        .btn-reset { background: #e74c3c; color: white; margin-top: 20px; width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
     </style>
 </head>
 <body>
     <header class="header">
         <h1><i class="fas fa-hand-holding-usd"></i> CelExpress</h1>
-        <button class="header-btn" onclick="showHistory()">
-            <i class="fas fa-history"></i> Cobros
-        </button>
+        <div style="display:flex;gap:5px;">
+            <button class="header-btn" onclick="showAdmin()">
+                <i class="fas fa-cog"></i>
+            </button>
+            <button class="header-btn" onclick="showHistory()">
+                <i class="fas fa-history"></i> Cobros
+            </button>
+        </div>
     </header>
     
     <div class="gps-section">
@@ -676,6 +825,126 @@
         </div>
     </div>
     
+    <!-- Modal Admin -->
+    <div class="modal modal-admin" id="adminModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-cog"></i> Administración</h3>
+                <button class="modal-close" onclick="closeAdmin()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="admin-tabs">
+                    <button class="admin-tab active" onclick="switchAdminTab('clientes')">
+                        <i class="fas fa-users"></i> Clientes
+                    </button>
+                    <button class="admin-tab" onclick="switchAdminTab('agregar')">
+                        <i class="fas fa-plus"></i> Agregar
+                    </button>
+                    <button class="admin-tab" onclick="switchAdminTab('importar')">
+                        <i class="fas fa-file-import"></i> Importar
+                    </button>
+                </div>
+                
+                <!-- Panel Clientes -->
+                <div class="admin-panel active" id="panelClientes">
+                    <div class="admin-stats">
+                        <div class="admin-stat">
+                            <div class="admin-stat-value" id="adminTotalClientes">0</div>
+                            <div class="admin-stat-label">Clientes</div>
+                        </div>
+                        <div class="admin-stat">
+                            <div class="admin-stat-value" id="adminTotalSaldo">$0</div>
+                            <div class="admin-stat-label">Saldo Total</div>
+                        </div>
+                        <div class="admin-stat">
+                            <div class="admin-stat-value" id="adminClientesPersonalizados">0</div>
+                            <div class="admin-stat-label">Agregados</div>
+                        </div>
+                        <div class="admin-stat">
+                            <div class="admin-stat-value" id="adminLiquidados">0</div>
+                            <div class="admin-stat-label">Liquidados</div>
+                        </div>
+                    </div>
+                    <input type="text" class="admin-search" id="adminSearch" placeholder="🔍 Buscar cliente..." oninput="filterAdminClients()">
+                    <div class="admin-client-list" id="adminClientList"></div>
+                    <button class="admin-btn-add" onclick="switchAdminTab('agregar')">
+                        <i class="fas fa-plus"></i> Agregar Nuevo Cliente
+                    </button>
+                </div>
+                
+                <!-- Panel Agregar/Editar -->
+                <div class="admin-panel" id="panelAgregar">
+                    <h4 style="margin-bottom:15px;" id="formTitle">Nuevo Cliente</h4>
+                    <input type="hidden" id="editingPhone" value="">
+                    <div class="form-group full">
+                        <label>Nombre del Cliente *</label>
+                        <input type="text" id="adminNombre" placeholder="Nombre completo">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Teléfono *</label>
+                            <input type="tel" id="adminTelefono" placeholder="10 dígitos">
+                        </div>
+                        <div class="form-group">
+                            <label>Saldo *</label>
+                            <input type="number" id="adminSaldo" placeholder="0.00" inputmode="decimal">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Tarifa Semanal</label>
+                            <input type="number" id="adminTarifa" placeholder="0.00" inputmode="decimal">
+                        </div>
+                        <div class="form-group">
+                            <label>Días Atraso</label>
+                            <input type="number" id="adminDias" placeholder="0">
+                        </div>
+                    </div>
+                    <div class="form-group full">
+                        <label>Dirección</label>
+                        <input type="text" id="adminDireccion" placeholder="Calle, número, colonia">
+                    </div>
+                    <div class="form-group full">
+                        <label>Promotor</label>
+                        <input type="text" id="adminPromotor" placeholder="Nombre del promotor">
+                    </div>
+                    <div class="admin-actions">
+                        <button class="btn-cancel" onclick="cancelEdit()">Cancelar</button>
+                        <button class="btn-save-client" onclick="saveClient()">
+                            <i class="fas fa-save"></i> Guardar
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Panel Importar/Exportar -->
+                <div class="admin-panel" id="panelImportar">
+                    <h4 style="margin-bottom:15px;">Importar Datos</h4>
+                    <div class="import-section">
+                        <p style="margin-bottom:10px;color:#666;">Sube un archivo CSV o JSON</p>
+                        <label class="import-btn">
+                            <i class="fas fa-upload"></i> Seleccionar Archivo
+                            <input type="file" id="importFile" accept=".csv,.json" onchange="importData(this)">
+                        </label>
+                    </div>
+                    
+                    <h4 style="margin-bottom:15px;">Exportar Datos</h4>
+                    <div class="export-btns">
+                        <button class="btn-export-json" onclick="exportJSON()">
+                            <i class="fas fa-download"></i> JSON
+                        </button>
+                        <button class="btn-export-csv" onclick="exportCSV()">
+                            <i class="fas fa-file-csv"></i> CSV
+                        </button>
+                    </div>
+                    
+                    <button class="btn-reset" onclick="resetToOriginal()">
+                        <i class="fas fa-undo"></i> Restaurar Base Original
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <div class="loading-screen" id="loader">
         <i class="fas fa-spinner"></i>
         <p id="loaderText">Cargando...</p>
@@ -693,6 +962,9 @@
         let payments = JSON.parse(localStorage.getItem('clientPayments') || '{}');
         let saldoAjustes = JSON.parse(localStorage.getItem('saldoAjustes') || '{}');
         let lastCapturista = localStorage.getItem('lastCapturista') || '';
+        let customClients = JSON.parse(localStorage.getItem('customClients') || '[]');
+        let deletedPhones = JSON.parse(localStorage.getItem('deletedPhones') || '[]');
+        let editedClients = JSON.parse(localStorage.getItem('editedClients') || '{}');
         let processedClients = [];
         let currentPayClient = null;
         let currentWappClient = null;
@@ -708,8 +980,38 @@
             updateCollectedTotal();
         });
         
+        function getActiveClients() {
+            // Combinar datos originales (filtrados) + personalizados + editados
+            let clients = [];
+            
+            // Agregar originales (excepto eliminados y editados)
+            DATA_ORIGINAL.forEach(c => {
+                if (!deletedPhones.includes(c.Teléfono)) {
+                    if (editedClients[c.Teléfono]) {
+                        clients.push(editedClients[c.Teléfono]);
+                    } else {
+                        clients.push(c);
+                    }
+                }
+            });
+            
+            // Agregar clientes personalizados
+            customClients.forEach(c => {
+                if (!deletedPhones.includes(c.Teléfono)) {
+                    if (editedClients[c.Teléfono]) {
+                        clients.push(editedClients[c.Teléfono]);
+                    } else {
+                        clients.push(c);
+                    }
+                }
+            });
+            
+            return clients;
+        }
+        
         function initClients() {
-            processedClients = DATA_ORIGINAL.map(c => {
+            const activeClients = getActiveClients();
+            processedClients = activeClients.map(c => {
                 const phone = c.Teléfono;
                 const saldoOriginal = c.Saldo;
                 const totalPagado = saldoAjustes[phone] || 0;
@@ -1376,6 +1678,369 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
             toast.classList.remove('show');
             void toast.offsetWidth;
             toast.classList.add('show');
+        }
+        
+        // ===== ADMINISTRACIÓN =====
+        function showAdmin() {
+            updateAdminStats();
+            renderAdminClients();
+            document.getElementById('adminModal').classList.add('active');
+        }
+        
+        function closeAdmin() {
+            document.getElementById('adminModal').classList.remove('active');
+            cancelEdit();
+        }
+        
+        function switchAdminTab(tab) {
+            document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.admin-panel').forEach(p => p.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById('panel' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+            
+            if (tab === 'clientes') {
+                renderAdminClients();
+            } else if (tab === 'agregar') {
+                // Solo resetear si no estamos editando
+                if (!document.getElementById('editingPhone').value) {
+                    resetForm();
+                }
+            }
+        }
+        
+        function updateAdminStats() {
+            const clients = getActiveClients();
+            const totalSaldo = clients.reduce((s, c) => s + (c.Saldo || 0), 0);
+            const liquidados = processedClients.filter(c => c.Saldo <= 0).length;
+            
+            document.getElementById('adminTotalClientes').textContent = clients.length;
+            document.getElementById('adminTotalSaldo').textContent = '$' + fmt(totalSaldo);
+            document.getElementById('adminClientesPersonalizados').textContent = customClients.length;
+            document.getElementById('adminLiquidados').textContent = liquidados;
+        }
+        
+        function renderAdminClients() {
+            const q = document.getElementById('adminSearch').value.toLowerCase();
+            const clients = getActiveClients();
+            
+            let filtered = clients;
+            if (q) {
+                filtered = clients.filter(c => 
+                    c.Cliente.toLowerCase().includes(q) ||
+                    c.Teléfono.includes(q)
+                );
+            }
+            
+            // Ordenar por saldo descendente
+            filtered.sort((a, b) => b.Saldo - a.Saldo);
+            
+            const container = document.getElementById('adminClientList');
+            
+            if (!filtered.length) {
+                container.innerHTML = '<div style="padding:20px;text-align:center;color:#999;">No hay clientes</div>';
+                return;
+            }
+            
+            container.innerHTML = filtered.slice(0, 50).map(c => {
+                const isCustom = customClients.some(cc => cc.Teléfono === c.Teléfono);
+                return `
+                <div class="admin-client-item">
+                    <div class="admin-client-info">
+                        <div class="admin-client-name">${c.Cliente} ${isCustom ? '<span style="color:#27AE60;font-size:0.7rem;">✚</span>' : ''}</div>
+                        <div class="admin-client-phone">${c.Teléfono}</div>
+                    </div>
+                    <span class="admin-client-saldo">$${fmt(c.Saldo)}</span>
+                    <div class="admin-btn-group">
+                        <button class="admin-btn admin-btn-edit" onclick="editClient('${c.Teléfono}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="admin-btn admin-btn-delete" onclick="deleteClient('${c.Teléfono}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>`;
+            }).join('');
+            
+            if (filtered.length > 50) {
+                container.innerHTML += `<div style="padding:10px;text-align:center;color:#666;font-size:0.8rem;">Mostrando 50 de ${filtered.length}. Usa el buscador.</div>`;
+            }
+        }
+        
+        function filterAdminClients() {
+            renderAdminClients();
+        }
+        
+        function editClient(phone) {
+            const allClients = [...DATA_ORIGINAL, ...customClients];
+            let client = editedClients[phone] || allClients.find(c => c.Teléfono === phone);
+            
+            if (!client) {
+                showToast('❌ Cliente no encontrado');
+                return;
+            }
+            
+            document.getElementById('editingPhone').value = phone;
+            document.getElementById('formTitle').textContent = 'Editar Cliente';
+            document.getElementById('adminNombre').value = client.Cliente || '';
+            document.getElementById('adminTelefono').value = client.Teléfono || '';
+            document.getElementById('adminTelefono').disabled = true;
+            document.getElementById('adminSaldo').value = client.Saldo || 0;
+            document.getElementById('adminTarifa').value = client.Tarifa || 0;
+            document.getElementById('adminDias').value = client['Días Atraso'] || 0;
+            document.getElementById('adminDireccion').value = client.Dirección || '';
+            document.getElementById('adminPromotor').value = client.Promotor || '';
+            
+            // Cambiar a pestaña agregar
+            document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.admin-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.admin-tab')[1].classList.add('active');
+            document.getElementById('panelAgregar').classList.add('active');
+        }
+        
+        function deleteClient(phone) {
+            if (!confirm('¿Eliminar este cliente de la lista?')) return;
+            
+            // Si es un cliente personalizado, quitarlo de customClients
+            const customIndex = customClients.findIndex(c => c.Teléfono === phone);
+            if (customIndex >= 0) {
+                customClients.splice(customIndex, 1);
+                localStorage.setItem('customClients', JSON.stringify(customClients));
+            } else {
+                // Si es original, agregarlo a deletedPhones
+                if (!deletedPhones.includes(phone)) {
+                    deletedPhones.push(phone);
+                    localStorage.setItem('deletedPhones', JSON.stringify(deletedPhones));
+                }
+            }
+            
+            // Quitar de editados si existe
+            delete editedClients[phone];
+            localStorage.setItem('editedClients', JSON.stringify(editedClients));
+            
+            initClients();
+            render(filterCurrent());
+            renderAdminClients();
+            updateAdminStats();
+            showToast('🗑️ Cliente eliminado');
+        }
+        
+        function saveClient() {
+            const editingPhone = document.getElementById('editingPhone').value;
+            const nombre = document.getElementById('adminNombre').value.trim();
+            const telefono = document.getElementById('adminTelefono').value.trim().replace(/\s/g, '');
+            const saldo = parseFloat(document.getElementById('adminSaldo').value) || 0;
+            const tarifa = parseFloat(document.getElementById('adminTarifa').value) || 0;
+            const dias = parseInt(document.getElementById('adminDias').value) || 0;
+            const direccion = document.getElementById('adminDireccion').value.trim();
+            const promotor = document.getElementById('adminPromotor').value.trim();
+            
+            if (!nombre) {
+                showToast('❌ Ingresa el nombre');
+                return;
+            }
+            if (!telefono || telefono.length < 10) {
+                showToast('❌ Teléfono inválido');
+                return;
+            }
+            
+            // Calcular riesgo automáticamente
+            let riesgo = '🟢 PROBABLE';
+            if (dias > 365) riesgo = '🔴 MUY DIFÍCIL';
+            else if (dias > 180) riesgo = '🟠 POCO PROBABLE';
+            else if (dias > 90) riesgo = '🟡 MUY PROBABLE';
+            
+            const clientData = {
+                Riesgo: riesgo,
+                Promotor: promotor || 'Sin asignar',
+                Cliente: nombre,
+                Teléfono: telefono,
+                Dirección: direccion,
+                'Días Atraso': dias,
+                Saldo: saldo,
+                'Est. Recuperar': saldo * (dias <= 90 ? 0.7 : dias <= 180 ? 0.45 : dias <= 365 ? 0.2 : 0.05),
+                Tarifa: tarifa,
+                'Última Trans.': new Date().toISOString().split('T')[0]
+            };
+            
+            if (editingPhone) {
+                // Editando existente
+                editedClients[editingPhone] = clientData;
+                localStorage.setItem('editedClients', JSON.stringify(editedClients));
+                showToast('✅ Cliente actualizado');
+            } else {
+                // Verificar si ya existe
+                const exists = [...DATA_ORIGINAL, ...customClients].some(c => c.Teléfono === telefono);
+                if (exists) {
+                    showToast('❌ Ya existe un cliente con ese teléfono');
+                    return;
+                }
+                
+                customClients.push(clientData);
+                localStorage.setItem('customClients', JSON.stringify(customClients));
+                showToast('✅ Cliente agregado');
+            }
+            
+            initClients();
+            render(filterCurrent());
+            cancelEdit();
+            switchAdminTab('clientes');
+        }
+        
+        function cancelEdit() {
+            resetForm();
+            document.getElementById('adminTelefono').disabled = false;
+        }
+        
+        function resetForm() {
+            document.getElementById('editingPhone').value = '';
+            document.getElementById('formTitle').textContent = 'Nuevo Cliente';
+            document.getElementById('adminNombre').value = '';
+            document.getElementById('adminTelefono').value = '';
+            document.getElementById('adminTelefono').disabled = false;
+            document.getElementById('adminSaldo').value = '';
+            document.getElementById('adminTarifa').value = '';
+            document.getElementById('adminDias').value = '';
+            document.getElementById('adminDireccion').value = '';
+            document.getElementById('adminPromotor').value = '';
+        }
+        
+        function importData(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    let data;
+                    if (file.name.endsWith('.json')) {
+                        data = JSON.parse(e.target.result);
+                    } else if (file.name.endsWith('.csv')) {
+                        data = parseCSV(e.target.result);
+                    } else {
+                        showToast('❌ Formato no soportado');
+                        return;
+                    }
+                    
+                    if (!Array.isArray(data) || !data.length) {
+                        showToast('❌ Archivo vacío o inválido');
+                        return;
+                    }
+                    
+                    // Agregar a customClients
+                    let added = 0;
+                    data.forEach(row => {
+                        const telefono = String(row.Teléfono || row.Telefono || row.telefono || '').trim();
+                        if (telefono && telefono.length >= 10) {
+                            const exists = [...DATA_ORIGINAL, ...customClients].some(c => c.Teléfono === telefono);
+                            if (!exists) {
+                                customClients.push({
+                                    Riesgo: row.Riesgo || '🟢 PROBABLE',
+                                    Promotor: row.Promotor || 'Importado',
+                                    Cliente: row.Cliente || row.Nombre || 'Sin nombre',
+                                    Teléfono: telefono,
+                                    Dirección: row.Dirección || row.Direccion || '',
+                                    'Días Atraso': parseInt(row['Días Atraso'] || row.DiasAtraso || 0),
+                                    Saldo: parseFloat(row.Saldo || 0),
+                                    Tarifa: parseFloat(row.Tarifa || 0),
+                                    'Última Trans.': row['Última Trans.'] || new Date().toISOString().split('T')[0]
+                                });
+                                added++;
+                            }
+                        }
+                    });
+                    
+                    localStorage.setItem('customClients', JSON.stringify(customClients));
+                    initClients();
+                    render(filterCurrent());
+                    updateAdminStats();
+                    renderAdminClients();
+                    showToast(`✅ ${added} clientes importados`);
+                } catch (err) {
+                    console.error(err);
+                    showToast('❌ Error al leer archivo');
+                }
+            };
+            reader.readAsText(file);
+            input.value = '';
+        }
+        
+        function parseCSV(text) {
+            const lines = text.split('\n').filter(l => l.trim());
+            if (lines.length < 2) return [];
+            
+            const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+            const data = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+                const row = {};
+                headers.forEach((h, idx) => {
+                    row[h] = values[idx] || '';
+                });
+                data.push(row);
+            }
+            return data;
+        }
+        
+        function exportJSON() {
+            const data = getActiveClients();
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+            downloadBlob(blob, 'clientes_cobranza.json');
+            showToast('📥 JSON descargado');
+        }
+        
+        function exportCSV() {
+            const data = getActiveClients();
+            const headers = ['Cliente', 'Teléfono', 'Saldo', 'Tarifa', 'Días Atraso', 'Dirección', 'Promotor', 'Riesgo'];
+            let csv = headers.join(',') + '\n';
+            
+            data.forEach(c => {
+                csv += [
+                    '"' + (c.Cliente || '').replace(/"/g, '""') + '"',
+                    c.Teléfono || '',
+                    c.Saldo || 0,
+                    c.Tarifa || 0,
+                    c['Días Atraso'] || 0,
+                    '"' + (c.Dirección || '').replace(/"/g, '""') + '"',
+                    '"' + (c.Promotor || '').replace(/"/g, '""') + '"',
+                    '"' + (c.Riesgo || '').replace(/"/g, '""') + '"'
+                ].join(',') + '\n';
+            });
+            
+            const blob = new Blob([csv], {type: 'text/csv'});
+            downloadBlob(blob, 'clientes_cobranza.csv');
+            showToast('📥 CSV descargado');
+        }
+        
+        function downloadBlob(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        function resetToOriginal() {
+            if (!confirm('¿Restaurar la base de datos original?\n\nEsto eliminará:\n• Clientes agregados manualmente\n• Ediciones a clientes\n• Clientes eliminados\n\n(Los pagos registrados se mantienen)')) return;
+            if (!confirm('⚠️ Esta acción NO se puede deshacer. ¿Continuar?')) return;
+            
+            localStorage.removeItem('customClients');
+            localStorage.removeItem('deletedPhones');
+            localStorage.removeItem('editedClients');
+            
+            customClients = [];
+            deletedPhones = [];
+            editedClients = {};
+            
+            initClients();
+            render(filterCurrent());
+            updateAdminStats();
+            renderAdminClients();
+            showToast('🔄 Base restaurada');
         }
     </script>
 </body>
