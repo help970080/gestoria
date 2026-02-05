@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CelExpress Cobranza</title>
+    <title>LGX y Asociados Cobranza</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -895,11 +895,225 @@
         .history-panel.active {
             display: block;
         }
+        
+        /* Modal Recibo */
+        .modal-recibo .modal-header { background: #27AE60; }
+        .recibo-container {
+            background: white;
+            border: 2px solid #27AE60;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+        .recibo-header {
+            text-align: center;
+            border-bottom: 2px dashed #ddd;
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+        }
+        .recibo-logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1F4E79;
+            margin-bottom: 5px;
+        }
+        .recibo-empresa {
+            font-size: 0.75rem;
+            color: #666;
+        }
+        .recibo-titulo {
+            background: #27AE60;
+            color: white;
+            padding: 8px;
+            border-radius: 6px;
+            text-align: center;
+            font-weight: 700;
+            margin: 10px 0;
+        }
+        .recibo-folio {
+            text-align: center;
+            font-size: 0.8rem;
+            color: #666;
+            margin-bottom: 15px;
+        }
+        .recibo-monto {
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #27AE60;
+            margin: 15px 0;
+        }
+        .recibo-detalle {
+            font-size: 0.85rem;
+        }
+        .recibo-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .recibo-row:last-child { border-bottom: none; }
+        .recibo-label { color: #666; }
+        .recibo-value { font-weight: 600; text-align: right; max-width: 60%; }
+        .recibo-saldo-nuevo {
+            background: #e8f5e9;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            margin-top: 15px;
+        }
+        .recibo-saldo-label { font-size: 0.8rem; color: #666; }
+        .recibo-saldo-value { font-size: 1.3rem; font-weight: 700; color: #27AE60; }
+        .recibo-saldo-value.liquidado { color: #9b59b6; }
+        .recibo-footer {
+            text-align: center;
+            border-top: 2px dashed #ddd;
+            padding-top: 15px;
+            margin-top: 15px;
+            font-size: 0.75rem;
+            color: #999;
+        }
+        .recibo-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .recibo-actions button {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn-recibo-wapp { background: #25D366; color: white; }
+        .btn-recibo-sms { background: #3498db; color: white; }
+        .btn-recibo-copy { background: #95a5a6; color: white; }
+        
+        /* Convenios de Pago */
+        .convenio-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            margin-left: 5px;
+        }
+        .convenio-badge.vencido {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+        }
+        .convenio-badge.al-dia {
+            background: linear-gradient(135deg, #27AE60, #2ECC71);
+        }
+        .convenio-info {
+            background: #f3e5f5;
+            border-left: 3px solid #9b59b6;
+            padding: 8px 10px;
+            margin-top: 8px;
+            border-radius: 0 8px 8px 0;
+            font-size: 0.75rem;
+        }
+        .convenio-info.vencido {
+            background: #ffebee;
+            border-left-color: #e74c3c;
+        }
+        .convenio-info.al-dia {
+            background: #e8f5e9;
+            border-left-color: #27AE60;
+        }
+        .convenio-progress {
+            background: #e0e0e0;
+            border-radius: 4px;
+            height: 6px;
+            margin-top: 6px;
+            overflow: hidden;
+        }
+        .convenio-progress-bar {
+            height: 100%;
+            border-radius: 4px;
+            background: #9b59b6;
+        }
+        
+        .modal-convenio .modal-header { background: #9b59b6; }
+        .convenio-form-section {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+        .convenio-form-section h4 {
+            margin-bottom: 12px;
+            color: #333;
+            font-size: 0.9rem;
+        }
+        .convenio-resumen {
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+        .convenio-resumen-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            font-size: 0.85rem;
+        }
+        .convenio-resumen-row.total {
+            border-top: 1px solid rgba(255,255,255,0.3);
+            margin-top: 8px;
+            padding-top: 10px;
+            font-weight: 700;
+        }
+        .btn-crear-convenio {
+            width: 100%;
+            padding: 14px;
+            background: #9b59b6;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-ver-convenio {
+            background: #9b59b6;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+        .btn-cancelar-convenio {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .filter-btn.convenio {
+            background: #9b59b6;
+            color: white;
+        }
     </style>
 </head>
 <body>
     <header class="header">
-        <h1><i class="fas fa-hand-holding-usd"></i> CelExpress</h1>
+        <h1><i class="fas fa-hand-holding-usd"></i> LGX y Asociados</h1>
         <div style="display:flex;gap:5px;">
             <button class="header-btn" onclick="showAdmin()">
                 <i class="fas fa-cog"></i>
@@ -925,6 +1139,7 @@
     <div class="filter-section">
         <button class="filter-btn active" onclick="setFilter('todos')">Todos</button>
         <button class="filter-btn" onclick="setFilter('pendientes')">Con saldo</button>
+        <button class="filter-btn" onclick="setFilter('convenios')">Convenios</button>
         <button class="filter-btn" onclick="setFilter('liquidados')">Liquidados</button>
         <button class="filter-btn" onclick="setFilter('hoy')">Pagaron hoy</button>
     </div>
@@ -1090,6 +1305,178 @@
         </div>
     </div>
     
+    <!-- Modal Convenio -->
+    <div class="modal modal-convenio" id="convenioModal">
+        <div class="modal-content" style="max-width:420px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-handshake"></i> Convenio de Pago</h3>
+                <button class="modal-close" onclick="closeConvenio()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-client">
+                    <div class="modal-client-name" id="convenioClientName"></div>
+                    <div class="modal-client-debt">Saldo actual: <span id="convenioClientDebt"></span></div>
+                </div>
+                
+                <!-- Formulario nuevo convenio -->
+                <div id="convenioFormSection">
+                    <div class="convenio-form-section">
+                        <h4>📋 Configurar Convenio</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Plazo (semanas)</label>
+                                <input type="number" id="convenioSemanas" placeholder="Ej: 8" min="1" max="52" oninput="calcularConvenio()">
+                            </div>
+                            <div class="form-group">
+                                <label>Pago semanal</label>
+                                <input type="number" id="convenioPagoSemanal" placeholder="Calculado" inputmode="decimal" oninput="calcularConvenioInverso()">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha de inicio</label>
+                            <input type="date" id="convenioFechaInicio">
+                        </div>
+                        <div class="form-group">
+                            <label>Notas del convenio</label>
+                            <input type="text" id="convenioNotas" placeholder="Ej: Cliente comprometido a pagar cada viernes">
+                        </div>
+                    </div>
+                    
+                    <div class="convenio-resumen" id="convenioResumen" style="display:none;">
+                        <div class="convenio-resumen-row">
+                            <span>Saldo a liquidar:</span>
+                            <span id="resumenSaldo">$0</span>
+                        </div>
+                        <div class="convenio-resumen-row">
+                            <span>Plazo:</span>
+                            <span id="resumenPlazo">0 semanas</span>
+                        </div>
+                        <div class="convenio-resumen-row">
+                            <span>Pago semanal:</span>
+                            <span id="resumenPagoSemanal">$0</span>
+                        </div>
+                        <div class="convenio-resumen-row total">
+                            <span>Fecha límite:</span>
+                            <span id="resumenFechaFin">-</span>
+                        </div>
+                    </div>
+                    
+                    <button class="btn-crear-convenio" onclick="crearConvenio()">
+                        <i class="fas fa-check"></i> CREAR CONVENIO
+                    </button>
+                </div>
+                
+                <!-- Vista convenio existente -->
+                <div id="convenioExistente" style="display:none;">
+                    <div class="convenio-form-section">
+                        <h4>📊 Estado del Convenio</h4>
+                        <div class="convenio-resumen-row" style="color:#333;">
+                            <span>Pago acordado:</span>
+                            <span id="existentePagoSemanal">$0/semana</span>
+                        </div>
+                        <div class="convenio-resumen-row" style="color:#333;">
+                            <span>Inicio:</span>
+                            <span id="existenteFechaInicio">-</span>
+                        </div>
+                        <div class="convenio-resumen-row" style="color:#333;">
+                            <span>Vence:</span>
+                            <span id="existenteFechaFin">-</span>
+                        </div>
+                        <div class="convenio-resumen-row" style="color:#333;">
+                            <span>Semanas transcurridas:</span>
+                            <span id="existenteSemanasTranscurridas">0</span>
+                        </div>
+                        <div class="convenio-progress">
+                            <div class="convenio-progress-bar" id="existenteProgressBar" style="width:0%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="convenio-resumen">
+                        <div class="convenio-resumen-row">
+                            <span>Debería haber pagado:</span>
+                            <span id="existenteDebioPagar">$0</span>
+                        </div>
+                        <div class="convenio-resumen-row">
+                            <span>Ha pagado:</span>
+                            <span id="existenteHaPagado">$0</span>
+                        </div>
+                        <div class="convenio-resumen-row total">
+                            <span>Diferencia:</span>
+                            <span id="existenteDiferencia">$0</span>
+                        </div>
+                    </div>
+                    
+                    <div id="existenteNotas" style="background:#f8f9fa;padding:10px;border-radius:8px;font-size:0.85rem;margin-bottom:15px;display:none;">
+                        <strong>📝 Notas:</strong> <span id="existenteNotasTexto"></span>
+                    </div>
+                    
+                    <button class="btn-cancelar-convenio" onclick="cancelarConvenio()">
+                        <i class="fas fa-times"></i> Cancelar Convenio
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Recibo -->
+    <div class="modal modal-recibo" id="reciboModal">
+        <div class="modal-content" style="max-width:380px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-receipt"></i> Recibo de Pago</h3>
+                <button class="modal-close" onclick="closeRecibo()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="recibo-container" id="reciboContent">
+                    <div class="recibo-header">
+                        <div class="recibo-logo">📱 LGX y Asociados</div>
+                        <div class="recibo-empresa">LMV CREDIA SA DE CV</div>
+                    </div>
+                    <div class="recibo-titulo">RECIBO DE PAGO</div>
+                    <div class="recibo-folio" id="reciboFolio">Folio: -</div>
+                    <div class="recibo-monto" id="reciboMonto">$0.00</div>
+                    <div class="recibo-detalle">
+                        <div class="recibo-row">
+                            <span class="recibo-label">Cliente:</span>
+                            <span class="recibo-value" id="reciboCliente">-</span>
+                        </div>
+                        <div class="recibo-row">
+                            <span class="recibo-label">Fecha:</span>
+                            <span class="recibo-value" id="reciboFecha">-</span>
+                        </div>
+                        <div class="recibo-row">
+                            <span class="recibo-label">Recibió:</span>
+                            <span class="recibo-value" id="reciboCapturista">-</span>
+                        </div>
+                        <div class="recibo-row" id="reciboNotaRow" style="display:none;">
+                            <span class="recibo-label">Concepto:</span>
+                            <span class="recibo-value" id="reciboNota">-</span>
+                        </div>
+                    </div>
+                    <div class="recibo-saldo-nuevo">
+                        <div class="recibo-saldo-label">Saldo pendiente:</div>
+                        <div class="recibo-saldo-value" id="reciboSaldoNuevo">$0.00</div>
+                    </div>
+                    <div class="recibo-footer">
+                        Gracias por su pago<br>
+                        Conserve este recibo como comprobante
+                    </div>
+                </div>
+                
+                <div class="recibo-actions">
+                    <button class="btn-recibo-wapp" onclick="enviarReciboWhatsApp()">
+                        <i class="fab fa-whatsapp"></i> WhatsApp
+                    </button>
+                    <button class="btn-recibo-sms" onclick="enviarReciboSMS()">
+                        <i class="fas fa-sms"></i> SMS
+                    </button>
+                </div>
+                <button class="btn-recibo-copy" style="width:100%;margin-top:10px;" onclick="copiarRecibo()">
+                    <i class="fas fa-copy"></i> Copiar Texto
+                </button>
+            </div>
+        </div>
+    </div>
+    
     <!-- Modal Admin -->
     <div class="modal modal-admin" id="adminModal">
         <div class="modal-content">
@@ -1226,6 +1613,7 @@
         let savedLocations = JSON.parse(localStorage.getItem('clientLocations') || '{}');
         let payments = JSON.parse(localStorage.getItem('clientPayments') || '{}');
         let saldoAjustes = JSON.parse(localStorage.getItem('saldoAjustes') || '{}');
+        let convenios = JSON.parse(localStorage.getItem('clientConvenios') || '{}');
         let lastCapturista = localStorage.getItem('lastCapturista') || '';
         let customClients = JSON.parse(localStorage.getItem('customClients') || '[]');
         let deletedPhones = JSON.parse(localStorage.getItem('deletedPhones') || '[]');
@@ -1323,6 +1711,9 @@
                     break;
                 case 'liquidados':
                     list = list.filter(c => c.Saldo <= 0);
+                    break;
+                case 'convenios':
+                    list = list.filter(c => convenios[c.Teléfono] && c.Saldo > 0);
                     break;
                 case 'hoy':
                     list = list.filter(c => {
@@ -1626,6 +2017,9 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
             lastCapturista = capturista;
             localStorage.setItem('lastCapturista', lastCapturista);
             
+            // Generar folio único
+            const folio = 'CEL-' + Date.now().toString(36).toUpperCase();
+            
             // Actualizar historial de pagos
             if (!payments[phone]) {
                 payments[phone] = [];
@@ -1637,7 +2031,8 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
                 capturista,
                 timestamp: new Date().toISOString(),
                 saldoAntes,
-                saldoDespues
+                saldoDespues,
+                folio
             });
             localStorage.setItem('clientPayments', JSON.stringify(payments));
             
@@ -1659,17 +2054,151 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
                 return c;
             });
             
+            // Guardar datos del recibo para envío
+            const nombreCliente = currentPayClient.name;
+            
             closePayModal();
+            
+            // Mostrar recibo
+            mostrarRecibo({
+                folio,
+                monto: amount,
+                cliente: nombreCliente,
+                telefono: phone,
+                fecha: date,
+                capturista,
+                nota: note,
+                saldoNuevo: saldoDespues
+            });
             
             // Mensaje especial si se liquidó
             if (saldoDespues <= 0) {
-                showToast(`🎉 ¡${currentPayClient.name.split(' ')[0]} LIQUIDADO! $${fmt(amount)}`);
+                showToast(`🎉 ¡${nombreCliente.split(' ')[0]} LIQUIDADO! $${fmt(amount)}`);
             } else {
                 showToast(`✅ Cobro de $${fmt(amount)} registrado por ${capturista}`);
             }
             
             render(filterCurrent());
             updateCollectedTotal();
+        }
+        
+        // ===== RECIBO =====
+        let currentRecibo = null;
+        
+        function mostrarRecibo(data) {
+            currentRecibo = data;
+            
+            // Formatear fecha
+            const fechaObj = new Date(data.fecha + 'T12:00:00');
+            const fechaFormateada = fechaObj.toLocaleDateString('es-MX', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            
+            // Llenar datos del recibo
+            document.getElementById('reciboFolio').textContent = 'Folio: ' + data.folio;
+            document.getElementById('reciboMonto').textContent = '$' + fmt(data.monto);
+            document.getElementById('reciboCliente').textContent = data.cliente;
+            document.getElementById('reciboFecha').textContent = fechaFormateada;
+            document.getElementById('reciboCapturista').textContent = data.capturista;
+            
+            // Nota opcional
+            if (data.nota) {
+                document.getElementById('reciboNotaRow').style.display = 'flex';
+                document.getElementById('reciboNota').textContent = data.nota;
+            } else {
+                document.getElementById('reciboNotaRow').style.display = 'none';
+            }
+            
+            // Saldo nuevo
+            const saldoEl = document.getElementById('reciboSaldoNuevo');
+            if (data.saldoNuevo <= 0) {
+                saldoEl.textContent = '✓ LIQUIDADO';
+                saldoEl.classList.add('liquidado');
+            } else {
+                saldoEl.textContent = '$' + fmt(data.saldoNuevo);
+                saldoEl.classList.remove('liquidado');
+            }
+            
+            document.getElementById('reciboModal').classList.add('active');
+        }
+        
+        function closeRecibo() {
+            document.getElementById('reciboModal').classList.remove('active');
+            currentRecibo = null;
+        }
+        
+        function generarTextoRecibo() {
+            if (!currentRecibo) return '';
+            
+            const r = currentRecibo;
+            const fechaObj = new Date(r.fecha + 'T12:00:00');
+            const fechaCorta = fechaObj.toLocaleDateString('es-MX');
+            
+            let texto = `📱 *LGX Y ASOCIADOS*\n`;
+            texto += `LMV CREDIA SA DE CV\n`;
+            texto += `${'─'.repeat(25)}\n`;
+            texto += `*RECIBO DE PAGO*\n`;
+            texto += `Folio: ${r.folio}\n`;
+            texto += `${'─'.repeat(25)}\n\n`;
+            texto += `💰 *MONTO: $${fmt(r.monto)}*\n\n`;
+            texto += `👤 Cliente: ${r.cliente}\n`;
+            texto += `📅 Fecha: ${fechaCorta}\n`;
+            texto += `✍️ Recibió: ${r.capturista}\n`;
+            if (r.nota) {
+                texto += `📝 Concepto: ${r.nota}\n`;
+            }
+            texto += `\n${'─'.repeat(25)}\n`;
+            if (r.saldoNuevo <= 0) {
+                texto += `✅ *CUENTA LIQUIDADA*\n`;
+            } else {
+                texto += `📊 Saldo pendiente: $${fmt(r.saldoNuevo)}\n`;
+            }
+            texto += `${'─'.repeat(25)}\n`;
+            texto += `_Gracias por su pago_\n`;
+            texto += `_Conserve este recibo_`;
+            
+            return texto;
+        }
+        
+        function enviarReciboWhatsApp() {
+            if (!currentRecibo) return;
+            
+            const texto = generarTextoRecibo();
+            let phone = currentRecibo.telefono.replace(/\D/g, '');
+            if (phone.length === 10) phone = '52' + phone;
+            
+            const url = `https://wa.me/${phone}?text=${encodeURIComponent(texto)}`;
+            window.open(url, '_blank');
+        }
+        
+        function enviarReciboSMS() {
+            if (!currentRecibo) return;
+            
+            const r = currentRecibo;
+            // SMS más corto
+            let texto = `LGX y Asociados - Recibo ${r.folio}\n`;
+            texto += `Pago: $${fmt(r.monto)}\n`;
+            texto += `Fecha: ${r.fecha}\n`;
+            if (r.saldoNuevo <= 0) {
+                texto += `CUENTA LIQUIDADA`;
+            } else {
+                texto += `Saldo: $${fmt(r.saldoNuevo)}`;
+            }
+            
+            let phone = currentRecibo.telefono.replace(/\D/g, '');
+            
+            const url = `sms:${phone}?body=${encodeURIComponent(texto)}`;
+            window.location.href = url;
+        }
+        
+        function copiarRecibo() {
+            const texto = generarTextoRecibo();
+            navigator.clipboard.writeText(texto).then(() => {
+                showToast('📋 Recibo copiado');
+            });
         }
         
         function updateCollectedTotal() {
@@ -2075,12 +2604,34 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
                 const todayAmount = todayPaid.reduce((s, p) => s + p.amount, 0);
                 const isLiquidado = c.Saldo <= 0;
                 
+                // Convenio
+                const convenio = convenios[c.Teléfono];
+                const convenioInfo = getConvenioStatus(c.Teléfono, c.Saldo);
+                
                 const distHtml = hasSaved && c.distance !== null
                     ? `<span class="distance-badge saved">${fmtDist(c.distance)} 📍</span>` : '';
                 
                 const paidHtml = todayAmount > 0 ? `<span class="paid-badge">✓ $${fmt(todayAmount)}</span>` : '';
                 
                 const liquidadoHtml = isLiquidado ? `<span class="liquidado-badge">✓ LIQUIDADO</span>` : '';
+                
+                // Badge de convenio
+                const convenioBadgeHtml = convenio && !isLiquidado ? `<span class="convenio-badge ${convenioInfo.status}">${convenioInfo.statusText}</span>` : '';
+                
+                // Info de convenio en el card
+                const convenioCardHtml = convenio && !isLiquidado ? `
+                    <div class="convenio-info ${convenioInfo.status}">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <span>📋 <strong>Convenio:</strong> $${fmt(convenio.pagoSemanal)}/sem × ${convenio.semanas} sem</span>
+                            <span>${convenioInfo.statusEmoji}</span>
+                        </div>
+                        <div style="margin-top:4px;font-size:0.7rem;color:#666;">
+                            Pagado: $${fmt(c.TotalPagado)} / Esperado: $${fmt(convenioInfo.esperado)}
+                        </div>
+                        <div class="convenio-progress">
+                            <div class="convenio-progress-bar" style="width:${Math.min(100, (c.TotalPagado / (convenio.pagoSemanal * convenio.semanas)) * 100)}%;background:${convenioInfo.status === 'vencido' ? '#e74c3c' : convenioInfo.status === 'al-dia' ? '#27AE60' : '#9b59b6'};"></div>
+                        </div>
+                    </div>` : '';
                 
                 // Sección de saldos
                 const saldoInfoHtml = `
@@ -2122,11 +2673,17 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
                 const cleanPhone = c.Teléfono.replace(/[^0-9]/g, '');
                 const phoneForWa = cleanPhone.startsWith('52') ? cleanPhone : '52' + cleanPhone;
                 
+                // Botón de convenio
+                const convenioBtnHtml = !isLiquidado ? `
+                    <button class="act-btn ${convenio ? 'btn-wapp-strong' : 'btn-save'}" onclick="event.stopPropagation(); openConvenio('${c.Teléfono}', '${esc(c.Cliente)}', ${c.Saldo})" style="background:${convenio ? '#9b59b6' : '#7f8c8d'};">
+                        <i class="fas fa-handshake"></i>${convenio ? 'Ver Conv.' : 'Convenio'}
+                    </button>` : '';
+                
                 return `
                 <div class="client-card ${isLiquidado ? 'liquidado' : ''}">
                     <div class="card-header ${risk}" onclick="toggle(${i})">
                         <div class="client-row1">
-                            <div class="client-name">${c.Cliente}</div>
+                            <div class="client-name">${c.Cliente} ${convenioBadgeHtml}</div>
                             <div class="client-amount ${isLiquidado ? 'liquidado' : ''}">
                                 ${isLiquidado ? '✓ $0' : '$' + fmt(c.Saldo)}
                             </div>
@@ -2153,6 +2710,7 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
                             <span class="detail-value">${c['Última Trans.'] || 'N/A'}</span>
                         </div>
                         ${saldoInfoHtml}
+                        ${convenioCardHtml}
                         ${paymentsHtml}
                         <div class="action-grid">
                             <a href="tel:${c.Teléfono}" class="act-btn btn-call">
@@ -2176,12 +2734,216 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
                                 <i class="fas fa-dollar-sign"></i>${isLiquidado ? 'Liquidado' : 'Cobrar'}
                             </button>
                         </div>
+                        <div class="action-grid-2" style="margin-top:8px;">
+                            ${convenioBtnHtml}
+                        </div>
                     </div>
                 </div>`;
             }).join('');
         }
         
         function toggle(i) { document.getElementById(`body-${i}`).classList.toggle('active'); }
+        
+        // ===== CONVENIOS =====
+        let currentConvenioClient = null;
+        
+        function getConvenioStatus(phone, saldoActual) {
+            const convenio = convenios[phone];
+            if (!convenio) return null;
+            
+            const inicio = new Date(convenio.fechaInicio);
+            const hoy = new Date();
+            const semanasTranscurridas = Math.floor((hoy - inicio) / (7 * 24 * 60 * 60 * 1000));
+            const esperado = Math.min(convenio.pagoSemanal * semanasTranscurridas, convenio.pagoSemanal * convenio.semanas);
+            
+            const client = processedClients.find(c => c.Teléfono === phone);
+            const pagado = client ? client.TotalPagado : 0;
+            
+            const diferencia = pagado - esperado;
+            
+            let status = '';
+            let statusText = '';
+            let statusEmoji = '';
+            
+            if (diferencia >= 0) {
+                status = 'al-dia';
+                statusText = 'Al día';
+                statusEmoji = '✅';
+            } else if (diferencia >= -convenio.pagoSemanal) {
+                status = '';
+                statusText = 'Convenio';
+                statusEmoji = '⚠️';
+            } else {
+                status = 'vencido';
+                statusText = 'Atrasado';
+                statusEmoji = '❌';
+            }
+            
+            return { status, statusText, statusEmoji, esperado, pagado, diferencia, semanasTranscurridas };
+        }
+        
+        function openConvenio(phone, name, saldo) {
+            currentConvenioClient = { phone, name, saldo };
+            
+            document.getElementById('convenioClientName').textContent = name;
+            document.getElementById('convenioClientDebt').textContent = '$' + fmt(saldo);
+            
+            const convenio = convenios[phone];
+            
+            if (convenio) {
+                // Mostrar convenio existente
+                document.getElementById('convenioFormSection').style.display = 'none';
+                document.getElementById('convenioExistente').style.display = 'block';
+                
+                const status = getConvenioStatus(phone, saldo);
+                const client = processedClients.find(c => c.Teléfono === phone);
+                const pagado = client ? client.TotalPagado : 0;
+                
+                document.getElementById('existentePagoSemanal').textContent = '$' + fmt(convenio.pagoSemanal) + '/semana';
+                document.getElementById('existenteFechaInicio').textContent = formatDateShort(convenio.fechaInicio);
+                document.getElementById('existenteFechaFin').textContent = formatDateShort(convenio.fechaFin);
+                document.getElementById('existenteSemanasTranscurridas').textContent = status.semanasTranscurridas + ' de ' + convenio.semanas;
+                
+                const progreso = (status.semanasTranscurridas / convenio.semanas) * 100;
+                document.getElementById('existenteProgressBar').style.width = Math.min(100, progreso) + '%';
+                
+                document.getElementById('existenteDebioPagar').textContent = '$' + fmt(status.esperado);
+                document.getElementById('existenteHaPagado').textContent = '$' + fmt(pagado);
+                
+                const difEl = document.getElementById('existenteDiferencia');
+                difEl.textContent = (status.diferencia >= 0 ? '+' : '') + '$' + fmt(status.diferencia);
+                difEl.style.color = status.diferencia >= 0 ? '#27AE60' : '#e74c3c';
+                
+                if (convenio.notas) {
+                    document.getElementById('existenteNotas').style.display = 'block';
+                    document.getElementById('existenteNotasTexto').textContent = convenio.notas;
+                } else {
+                    document.getElementById('existenteNotas').style.display = 'none';
+                }
+            } else {
+                // Mostrar formulario nuevo
+                document.getElementById('convenioFormSection').style.display = 'block';
+                document.getElementById('convenioExistente').style.display = 'none';
+                
+                // Reset form
+                document.getElementById('convenioSemanas').value = '';
+                document.getElementById('convenioPagoSemanal').value = '';
+                document.getElementById('convenioFechaInicio').valueAsDate = new Date();
+                document.getElementById('convenioNotas').value = '';
+                document.getElementById('convenioResumen').style.display = 'none';
+            }
+            
+            document.getElementById('convenioModal').classList.add('active');
+        }
+        
+        function closeConvenio() {
+            document.getElementById('convenioModal').classList.remove('active');
+            currentConvenioClient = null;
+        }
+        
+        function calcularConvenio() {
+            if (!currentConvenioClient) return;
+            
+            const semanas = parseInt(document.getElementById('convenioSemanas').value) || 0;
+            if (semanas <= 0) {
+                document.getElementById('convenioResumen').style.display = 'none';
+                return;
+            }
+            
+            const saldo = currentConvenioClient.saldo;
+            const pagoSemanal = Math.ceil(saldo / semanas * 100) / 100;
+            
+            document.getElementById('convenioPagoSemanal').value = pagoSemanal.toFixed(2);
+            
+            actualizarResumenConvenio(semanas, pagoSemanal);
+        }
+        
+        function calcularConvenioInverso() {
+            if (!currentConvenioClient) return;
+            
+            const pagoSemanal = parseFloat(document.getElementById('convenioPagoSemanal').value) || 0;
+            if (pagoSemanal <= 0) {
+                document.getElementById('convenioResumen').style.display = 'none';
+                return;
+            }
+            
+            const saldo = currentConvenioClient.saldo;
+            const semanas = Math.ceil(saldo / pagoSemanal);
+            
+            document.getElementById('convenioSemanas').value = semanas;
+            
+            actualizarResumenConvenio(semanas, pagoSemanal);
+        }
+        
+        function actualizarResumenConvenio(semanas, pagoSemanal) {
+            const saldo = currentConvenioClient.saldo;
+            const fechaInicio = new Date(document.getElementById('convenioFechaInicio').value);
+            const fechaFin = new Date(fechaInicio);
+            fechaFin.setDate(fechaFin.getDate() + (semanas * 7));
+            
+            document.getElementById('resumenSaldo').textContent = '$' + fmt(saldo);
+            document.getElementById('resumenPlazo').textContent = semanas + ' semanas';
+            document.getElementById('resumenPagoSemanal').textContent = '$' + fmt(pagoSemanal);
+            document.getElementById('resumenFechaFin').textContent = formatDateShort(fechaFin.toISOString().split('T')[0]);
+            
+            document.getElementById('convenioResumen').style.display = 'block';
+        }
+        
+        function formatDateShort(dateStr) {
+            const d = new Date(dateStr + 'T12:00:00');
+            return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+        
+        function crearConvenio() {
+            if (!currentConvenioClient) return;
+            
+            const semanas = parseInt(document.getElementById('convenioSemanas').value) || 0;
+            const pagoSemanal = parseFloat(document.getElementById('convenioPagoSemanal').value) || 0;
+            const fechaInicio = document.getElementById('convenioFechaInicio').value;
+            const notas = document.getElementById('convenioNotas').value.trim();
+            
+            if (semanas <= 0 || pagoSemanal <= 0) {
+                showToast('❌ Completa el plazo y monto');
+                return;
+            }
+            
+            if (!fechaInicio) {
+                showToast('❌ Selecciona fecha de inicio');
+                return;
+            }
+            
+            const fechaFin = new Date(fechaInicio);
+            fechaFin.setDate(fechaFin.getDate() + (semanas * 7));
+            
+            convenios[currentConvenioClient.phone] = {
+                semanas,
+                pagoSemanal,
+                fechaInicio,
+                fechaFin: fechaFin.toISOString().split('T')[0],
+                notas,
+                saldoInicial: currentConvenioClient.saldo,
+                creadoEn: new Date().toISOString()
+            };
+            
+            localStorage.setItem('clientConvenios', JSON.stringify(convenios));
+            
+            closeConvenio();
+            render(filterCurrent());
+            showToast('📋 Convenio creado: $' + fmt(pagoSemanal) + '/sem × ' + semanas + ' sem');
+        }
+        
+        function cancelarConvenio() {
+            if (!currentConvenioClient) return;
+            
+            if (!confirm('¿Cancelar el convenio de pago?\n\nEsto solo elimina el convenio, los pagos registrados se mantienen.')) return;
+            
+            delete convenios[currentConvenioClient.phone];
+            localStorage.setItem('clientConvenios', JSON.stringify(convenios));
+            
+            closeConvenio();
+            render(filterCurrent());
+            showToast('🗑️ Convenio cancelado');
+        }
         
         // ===== UTILIDADES =====
         function calcDist(lat1, lon1, lat2, lon2) {
