@@ -1708,41 +1708,53 @@
             try {
                 const result = await callGoogleAPI('fullSync');
                 
-                if (result.error) {
+                if (result.error || !result.success) {
                     console.error('Sync error:', result.error);
                     showToast('⚠️ Usando datos locales');
                     return;
                 }
                 
+                // Los datos vienen en result.data
+                const data = result.data || result;
+                
                 // Guardar datos de la nube
-                cloudData = result;
+                cloudData = {
+                    clientes: data.clientes || [],
+                    pagos: data.pagos || [],
+                    convenios: data.convenios || []
+                };
                 useCloudData = true;
-                lastSyncTime = result.timestamp;
+                lastSyncTime = result.timestamp || new Date().toISOString();
                 localStorage.setItem('lastSyncTime', lastSyncTime);
                 localStorage.setItem('cloudData', JSON.stringify(cloudData));
                 
                 // Convertir pagos de array a objeto por teléfono
                 payments = {};
                 saldoAjustes = {};
-                result.pagos.forEach(p => {
-                    const phone = p.Teléfono;
+                (cloudData.pagos || []).forEach(p => {
+                    const phone = p.Teléfono || p.telefono;
+                    if (!phone) return;
                     if (!payments[phone]) payments[phone] = [];
                     payments[phone].push({
-                        amount: parseFloat(p.amount) || 0,
-                        date: p.date,
-                        capturista: p.capturista,
-                        note: p.note,
-                        folio: p.folio,
+                        amount: parseFloat(p.amount || p.monto) || 0,
+                        date: p.date || p.fecha,
+                        capturista: p.capturista || p.cobrador,
+                        note: p.note || p.notas,
+                        folio: p.folio || p.id,
                         saldoAntes: parseFloat(p.saldoAntes) || 0,
                         saldoDespues: parseFloat(p.saldoDespues) || 0,
                         timestamp: p.timestamp,
                         id: p.id
                     });
-                    saldoAjustes[phone] = (saldoAjustes[phone] || 0) + (parseFloat(p.amount) || 0);
+                    saldoAjustes[phone] = (saldoAjustes[phone] || 0) + (parseFloat(p.amount || p.monto) || 0);
                 });
                 
-                // Convenios
-                convenios = result.convenios || {};
+                // Convenios - convertir array a objeto por teléfono
+                convenios = {};
+                (cloudData.convenios || []).forEach(c => {
+                    const phone = c.Teléfono || c.telefono || c.clienteId;
+                    if (phone) convenios[phone] = c;
+                });
                 
                 // Guardar localmente como backup
                 localStorage.setItem('clientPayments', JSON.stringify(payments));
@@ -1752,7 +1764,7 @@
                 // Procesar pendientes
                 await processPendingSync();
                 
-                console.log('Sync completo:', result.clientes.length, 'clientes,', result.pagos.length, 'pagos');
+                console.log('Sync completo:', cloudData.clientes.length, 'clientes,', cloudData.pagos.length, 'pagos');
                 
             } catch (error) {
                 console.error('Initial sync failed:', error);
