@@ -1881,8 +1881,9 @@
         }
         
         function getActiveClients() {
-            // Si tenemos datos de la nube, usarlos
+            // Si tenemos datos de la nube con clientes, usarlos
             if (useCloudData && cloudData.clientes && cloudData.clientes.length > 0) {
+                console.log('Usando datos de la nube:', cloudData.clientes.length, 'clientes');
                 return cloudData.clientes.map(c => ({
                     ...c,
                     Saldo: parseFloat(c.Saldo) || 0,
@@ -1892,31 +1893,38 @@
                 }));
             }
             
-            // Fallback a datos locales
+            // Fallback a datos locales (customClients + DATA_ORIGINAL)
             let clients = [];
             
-            // Agregar originales (excepto eliminados y editados)
-            DATA_ORIGINAL.forEach(c => {
-                if (!deletedPhones.includes(c.Teléfono)) {
-                    if (editedClients[c.Teléfono]) {
-                        clients.push(editedClients[c.Teléfono]);
-                    } else {
-                        clients.push(c);
+            // Primero agregar customClients (importados)
+            if (customClients.length > 0) {
+                console.log('Usando customClients:', customClients.length, 'clientes');
+                customClients.forEach(c => {
+                    if (!deletedPhones.includes(c.Teléfono) && !deletedPhones.includes(c.id)) {
+                        if (editedClients[c.id] || editedClients[c.Teléfono]) {
+                            clients.push(editedClients[c.id] || editedClients[c.Teléfono]);
+                        } else {
+                            clients.push(c);
+                        }
                     }
-                }
-            });
+                });
+            }
             
-            // Agregar clientes personalizados
-            customClients.forEach(c => {
-                if (!deletedPhones.includes(c.Teléfono)) {
-                    if (editedClients[c.Teléfono]) {
-                        clients.push(editedClients[c.Teléfono]);
-                    } else {
-                        clients.push(c);
+            // Agregar originales si no hay customClients
+            if (clients.length === 0 && DATA_ORIGINAL.length > 0) {
+                console.log('Usando DATA_ORIGINAL:', DATA_ORIGINAL.length, 'clientes');
+                DATA_ORIGINAL.forEach(c => {
+                    if (!deletedPhones.includes(c.Teléfono)) {
+                        if (editedClients[c.Teléfono]) {
+                            clients.push(editedClients[c.Teléfono]);
+                        } else {
+                            clients.push(c);
+                        }
                     }
-                }
-            });
+                });
+            }
             
+            console.log('Total clientes activos:', clients.length);
             return clients;
         }
         
@@ -3720,7 +3728,18 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
                 return;
             }
             
-            const clientes = getActiveClients();
+            // Usar customClients si hay, sino processedClients, sino getActiveClients
+            let clientes = [];
+            if (customClients.length > 0) {
+                clientes = customClients;
+                console.log('Subiendo customClients:', clientes.length);
+            } else if (processedClients.length > 0) {
+                clientes = processedClients;
+                console.log('Subiendo processedClients:', clientes.length);
+            } else {
+                clientes = getActiveClients();
+                console.log('Subiendo getActiveClients:', clientes.length);
+            }
             
             if (clientes.length === 0) {
                 showToast('❌ No hay clientes para subir');
@@ -3737,8 +3756,8 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
                 // Preparar datos para subir (incluir ID único para permitir duplicados de teléfono)
                 const clientesParaSubir = clientes.map((c, idx) => ({
                     id: c.id || c.Teléfono + '-' + idx,
-                    Teléfono: c.Teléfono || '',
-                    TelefonoOriginal: c.TelefonoOriginal || c.Teléfono || '',
+                    Teléfono: String(c.Teléfono || ''),
+                    TelefonoOriginal: String(c.TelefonoOriginal || c.Teléfono || ''),
                     Cliente: c.Cliente || '',
                     Dirección: c.Dirección || '',
                     Saldo: c.Saldo || 0,
@@ -3754,6 +3773,8 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
                     FechaTermino: c.FechaTermino || ''
                 }));
                 
+                console.log('Enviando', clientesParaSubir.length, 'clientes a Google Sheets');
+                
                 const result = await callGoogleAPI('importClientes', { data: clientesParaSubir });
                 
                 if (result.error) {
@@ -3761,13 +3782,18 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
                 } else {
                     showToast(`✅ ${result.added || clientesParaSubir.length} clientes subidos`);
                     
-                    // Actualizar cloudData
+                    // Actualizar cloudData con los datos subidos
                     cloudData.clientes = clientesParaSubir;
                     useCloudData = true;
                     localStorage.setItem('cloudData', JSON.stringify(cloudData));
+                    
+                    // Re-inicializar clientes para reflejar cambios
+                    initClients();
+                    render(filterCurrent());
                 }
             } catch (e) {
                 showToast('❌ Error al subir: ' + e.message);
+                console.error('Error subiendo:', e);
             }
             
             hideLoader();
