@@ -2057,7 +2057,7 @@
         
         // ===== MENSAJES WHATSAPP =====
         function getMensajeLegal(c) {
-            const nombre = c.Cliente.split(' ')[0];
+            const nombre = String(c.Cliente || '').split(' ')[0];
             const saldo = fmt(c.Saldo);
             const dias = c['Días Atraso'];
             
@@ -2925,9 +2925,10 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
                         `).join('')}
                        </div>` : '';
                 
+                const clientName = String(c.Cliente || '').split(' ')[0] || 'Cliente';
                 const msgSimple = isLiquidado 
-                    ? `Hola ${c.Cliente.split(' ')[0]}, ¡su cuenta está liquidada! Gracias. LMV CREDIA`
-                    : `Hola ${c.Cliente.split(' ')[0]}, le recordamos su adeudo de $${fmt(c.Saldo)}. Favor de comunicarse. LMV CREDIA`;
+                    ? `Hola ${clientName}, ¡su cuenta está liquidada! Gracias. LMV CREDIA`
+                    : `Hola ${clientName}, le recordamos su adeudo de $${fmt(c.Saldo)}. Favor de comunicarse. LMV CREDIA`;
                 
                 const cleanPhone = String(c.Teléfono || '').replace(/[^0-9]/g, '');
                 const phoneForWa = cleanPhone.startsWith('52') ? cleanPhone : '52' + cleanPhone;
@@ -3238,15 +3239,17 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
         function fmt(n) { return (n||0).toLocaleString('es-MX', {maximumFractionDigits:2}); }
         
         function fmtPhone(p) {
-            if (!p || p.length < 10) return p || '';
-            const clean = p.replace(/[^0-9]/g, '');
+            if (!p) return '';
+            const str = String(p);
+            if (str.length < 10) return str;
+            const clean = str.replace(/[^0-9]/g, '');
             if (clean.length === 10) {
                 return clean.replace(/(\d{2})(\d{4})(\d{4})/, '$1 $2 $3');
             }
-            return p;
+            return str;
         }
         
-        function esc(s) { return (s||'').replace(/'/g, "\\'").replace(/"/g, ''); }
+        function esc(s) { return String(s||'').replace(/'/g, "\\'").replace(/"/g, ''); }
         
         function navUrl(c) {
             if (c.savedCoords) {
