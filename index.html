@@ -1936,7 +1936,7 @@
             if (q) {
                 list = list.filter(c => 
                     c.Cliente.toLowerCase().includes(q) ||
-                    c.Teléfono.includes(q) ||
+                    String(c.Teléfono || '').includes(q) ||
                     (c.Dirección && c.Dirección.toLowerCase().includes(q))
                 );
             }
@@ -2929,7 +2929,7 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
                     ? `Hola ${c.Cliente.split(' ')[0]}, ¡su cuenta está liquidada! Gracias. LMV CREDIA`
                     : `Hola ${c.Cliente.split(' ')[0]}, le recordamos su adeudo de $${fmt(c.Saldo)}. Favor de comunicarse. LMV CREDIA`;
                 
-                const cleanPhone = c.Teléfono.replace(/[^0-9]/g, '');
+                const cleanPhone = String(c.Teléfono || '').replace(/[^0-9]/g, '');
                 const phoneForWa = cleanPhone.startsWith('52') ? cleanPhone : '52' + cleanPhone;
                 
                 // Botón de convenio
@@ -3314,7 +3314,7 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
             if (q) {
                 filtered = clients.filter(c => 
                     c.Cliente.toLowerCase().includes(q) ||
-                    c.Teléfono.includes(q)
+                    String(c.Teléfono || '').includes(q)
                 );
             }
             
