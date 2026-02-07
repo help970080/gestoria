@@ -1414,6 +1414,10 @@
                         <strong>📝 Notas:</strong> <span id="existenteNotasTexto"></span>
                     </div>
                     
+                    <button class="btn-ver-convenio" onclick="regenerarPDFConvenio()" style="margin-bottom:10px;">
+                        <i class="fas fa-file-pdf"></i> Generar PDF para WhatsApp
+                    </button>
+                    
                     <button class="btn-cancelar-convenio" onclick="cancelarConvenio()">
                         <i class="fas fa-times"></i> Cancelar Convenio
                     </button>
@@ -3224,14 +3228,24 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
             const fechaFin = new Date(fechaInicio);
             fechaFin.setDate(fechaFin.getDate() + (semanas * 7));
             
+            // Fecha límite opción contado (30 días)
+            const fechaLimiteContado = new Date();
+            fechaLimiteContado.setDate(fechaLimiteContado.getDate() + 30);
+            
             const convenioData = {
+                id: 'conv_' + Date.now(),
                 semanas,
                 pagoSemanal,
                 fechaInicio,
                 fechaFin: fechaFin.toISOString().split('T')[0],
+                fechaLimiteContado: fechaLimiteContado.toISOString().split('T')[0],
                 notas,
                 saldoInicial: currentConvenioClient.saldo,
-                creadoEn: new Date().toISOString()
+                cliente: currentConvenioClient.name,
+                telefono: currentConvenioClient.phone,
+                estado: 'activo',
+                creadoEn: new Date().toISOString(),
+                historial: []
             };
             
             convenios[currentConvenioClient.phone] = convenioData;
@@ -3245,7 +3259,210 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
             
             closeConvenio();
             render(filterCurrent());
-            showToast('📋 Convenio creado: $' + fmt(pagoSemanal) + '/sem × ' + semanas + ' sem');
+            showToast('📋 Convenio creado');
+            
+            // Preguntar si desea generar el PDF
+            if (confirm('¿Deseas generar el PDF del convenio para enviar por WhatsApp?')) {
+                generarPDFConvenio(convenioData);
+            }
+        }
+        
+        // Función para convertir número a texto
+        function numeroALetras(num) {
+            const unidades = ['', 'un', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve'];
+            const decenas = ['', 'diez', 'veinte', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa'];
+            const especiales = ['diez', 'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve'];
+            const centenas = ['', 'ciento', 'doscientos', 'trescientos', 'cuatrocientos', 'quinientos', 'seiscientos', 'setecientos', 'ochocientos', 'novecientos'];
+            
+            num = Math.floor(num);
+            if (num === 0) return 'cero';
+            if (num === 100) return 'cien';
+            
+            let resultado = '';
+            
+            if (num >= 1000000) {
+                const millones = Math.floor(num / 1000000);
+                resultado += (millones === 1 ? 'un millón ' : numeroALetras(millones) + ' millones ');
+                num %= 1000000;
+            }
+            
+            if (num >= 1000) {
+                const miles = Math.floor(num / 1000);
+                resultado += (miles === 1 ? 'mil ' : numeroALetras(miles) + ' mil ');
+                num %= 1000;
+            }
+            
+            if (num >= 100) {
+                resultado += centenas[Math.floor(num / 100)] + ' ';
+                num %= 100;
+            }
+            
+            if (num >= 10 && num < 20) {
+                resultado += especiales[num - 10];
+                return resultado.trim();
+            }
+            
+            if (num >= 20) {
+                const dec = Math.floor(num / 10);
+                const uni = num % 10;
+                if (uni === 0) {
+                    resultado += decenas[dec];
+                } else if (dec === 2) {
+                    resultado += 'veinti' + unidades[uni];
+                } else {
+                    resultado += decenas[dec] + ' y ' + unidades[uni];
+                }
+            } else if (num > 0) {
+                resultado += unidades[num];
+            }
+            
+            return resultado.trim();
+        }
+        
+        function formatearFechaTexto(fechaStr) {
+            const fecha = new Date(fechaStr + 'T12:00:00');
+            const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+            return `${fecha.getDate()} de ${meses[fecha.getMonth()]} de ${fecha.getFullYear()}`;
+        }
+        
+        async function generarPDFConvenio(convenio) {
+            showLoader('Generando PDF...');
+            
+            // Cargar jsPDF si no está disponible
+            if (typeof jspdf === 'undefined' && typeof jsPDF === 'undefined') {
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+                    script.onload = resolve;
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                });
+            }
+            
+            const { jsPDF } = window.jspdf || window;
+            const doc = new jsPDF();
+            
+            const hoy = new Date();
+            const fechaHoy = formatearFechaTexto(hoy.toISOString().split('T')[0]);
+            const fechaLimite = formatearFechaTexto(convenio.fechaLimiteContado);
+            
+            const montoTotal = convenio.saldoInicial;
+            const montoTexto = numeroALetras(Math.floor(montoTotal));
+            const centavos = Math.round((montoTotal % 1) * 100);
+            const montoLetra = `${montoTexto} pesos ${centavos.toString().padStart(2, '0')}/100 M.N.`;
+            
+            // Configuración
+            const margenIzq = 20;
+            const margenDer = 190;
+            const anchoTexto = margenDer - margenIzq;
+            let y = 25;
+            
+            // Título
+            doc.setFontSize(16);
+            doc.setFont('helvetica', 'bold');
+            doc.text('CONVENIO DE PAGO', 105, y, { align: 'center' });
+            y += 15;
+            
+            // Fecha
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`Estado de México, a ${fechaHoy}`, margenDer, y, { align: 'right' });
+            y += 15;
+            
+            // Introducción
+            doc.setFontSize(10);
+            const intro = `Por medio del presente, ${convenio.cliente.toUpperCase()}, en adelante "EL DEUDOR", reconoce adeudar y se compromete a pagar a favor de LMV CREDIA SA DE CV, en adelante "EL ACREEDOR", bajo los siguientes términos:`;
+            const introLineas = doc.splitTextToSize(intro, anchoTexto);
+            doc.text(introLineas, margenIzq, y);
+            y += introLineas.length * 5 + 10;
+            
+            // Opción 1
+            doc.setFont('helvetica', 'bold');
+            doc.text('OPCIÓN 1 – PAGO DE CONTADO', margenIzq, y);
+            y += 8;
+            
+            doc.setFont('helvetica', 'normal');
+            const opcion1 = `EL DEUDOR se obliga a liquidar la cantidad total de $${montoTotal.toLocaleString('es-MX', {minimumFractionDigits: 2})} (${montoLetra}) en un plazo máximo de 30 días, es decir, a más tardar el ${fechaLimite}.`;
+            const opcion1Lineas = doc.splitTextToSize(opcion1, anchoTexto);
+            doc.text(opcion1Lineas, margenIzq, y);
+            y += opcion1Lineas.length * 5 + 10;
+            
+            // Opción 2
+            doc.setFont('helvetica', 'bold');
+            doc.text('OPCIÓN 2 – PAGO A PLAZOS (En caso de no ejercer la Opción 1)', margenIzq, y);
+            y += 8;
+            
+            doc.setFont('helvetica', 'normal');
+            const opcion2 = `Si EL DEUDOR no realiza el pago de contado en el plazo establecido, se compromete a liquidar la cantidad de $${montoTotal.toLocaleString('es-MX', {minimumFractionDigits: 2})} (${montoLetra}) mediante pagos semanales de $${convenio.pagoSemanal.toLocaleString('es-MX')} durante ${convenio.semanas} semanas, sin que exista prórroga alguna.`;
+            const opcion2Lineas = doc.splitTextToSize(opcion2, anchoTexto);
+            doc.text(opcion2Lineas, margenIzq, y);
+            y += opcion2Lineas.length * 5 + 10;
+            
+            // Condiciones
+            doc.setFont('helvetica', 'bold');
+            doc.text('CONDICIONES:', margenIzq, y);
+            y += 8;
+            
+            doc.setFont('helvetica', 'normal');
+            const condiciones = [
+                '1. El incumplimiento de cualquier pago semanal dará por terminado automáticamente este convenio, quedando EL ACREEDOR en libertad de ejercer las acciones legales correspondientes por el total del adeudo.',
+                '2. No se otorgarán prórrogas bajo ninguna circunstancia.',
+                '3. Los pagos deberán realizarse en las cuentas o medios autorizados por EL ACREEDOR.',
+                '4. Este convenio tiene vigencia a partir de la fecha de firma.'
+            ];
+            
+            condiciones.forEach(cond => {
+                const lineas = doc.splitTextToSize(cond, anchoTexto - 5);
+                doc.text(lineas, margenIzq + 5, y);
+                y += lineas.length * 5 + 3;
+            });
+            
+            y += 5;
+            
+            // Texto final
+            const textoFinal = 'Leído que fue el presente convenio y enteradas las partes de su contenido y alcance legal, lo firman de conformidad.';
+            const textoFinalLineas = doc.splitTextToSize(textoFinal, anchoTexto);
+            doc.text(textoFinalLineas, margenIzq, y);
+            y += textoFinalLineas.length * 5 + 25;
+            
+            // Firmas
+            const yFirma = Math.max(y, 230);
+            
+            // Firma Deudor
+            doc.line(30, yFirma, 90, yFirma);
+            doc.setFont('helvetica', 'bold');
+            doc.text('EL DEUDOR', 60, yFirma + 6, { align: 'center' });
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            const nombreDeudorLineas = doc.splitTextToSize(convenio.cliente.toUpperCase(), 60);
+            doc.text(nombreDeudorLineas, 60, yFirma + 12, { align: 'center' });
+            
+            // Firma Acreedor
+            doc.setFontSize(10);
+            doc.line(120, yFirma, 180, yFirma);
+            doc.setFont('helvetica', 'bold');
+            doc.text('EL ACREEDOR', 150, yFirma + 6, { align: 'center' });
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.text('LMV CREDIA SA DE CV', 150, yFirma + 12, { align: 'center' });
+            
+            hideLoader();
+            
+            // Guardar y ofrecer enviar por WhatsApp
+            const nombreArchivo = `Convenio_${convenio.cliente.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+            doc.save(nombreArchivo);
+            
+            showToast('📄 PDF descargado: ' + nombreArchivo);
+            
+            // Preguntar si enviar por WhatsApp
+            setTimeout(() => {
+                if (confirm('El PDF se ha descargado. ¿Deseas abrir WhatsApp para enviarlo al cliente?')) {
+                    const phone = String(convenio.telefono || '').replace(/[^0-9]/g, '');
+                    const phoneWa = phone.startsWith('52') ? phone : '52' + phone;
+                    const mensaje = `Hola ${convenio.cliente.split(' ')[0]}, le envío el convenio de pago acordado. Por favor revíselo y fírmelo. Gracias.`;
+                    window.open(`https://wa.me/${phoneWa}?text=${encodeURIComponent(mensaje)}`, '_blank');
+                }
+            }, 500);
         }
         
         function cancelarConvenio() {
@@ -3262,6 +3479,26 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
             closeConvenio();
             render(filterCurrent());
             showToast('🗑️ Convenio cancelado');
+        }
+        
+        function regenerarPDFConvenio() {
+            if (!currentConvenioClient) return;
+            const convenio = convenios[currentConvenioClient.phone];
+            if (!convenio) {
+                showToast('❌ No hay convenio para este cliente');
+                return;
+            }
+            
+            // Asegurar que tenga todos los datos necesarios
+            convenio.cliente = convenio.cliente || currentConvenioClient.name;
+            convenio.telefono = convenio.telefono || currentConvenioClient.phone;
+            convenio.fechaLimiteContado = convenio.fechaLimiteContado || (() => {
+                const fecha = new Date(convenio.creadoEn || new Date());
+                fecha.setDate(fecha.getDate() + 30);
+                return fecha.toISOString().split('T')[0];
+            })();
+            
+            generarPDFConvenio(convenio);
         }
         
         // ===== UTILIDADES =====
@@ -3621,6 +3858,10 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
                 return;
             }
             
+            // Debug: mostrar columnas del archivo
+            console.log('Columnas en el archivo:', Object.keys(data[0]));
+            console.log('Primera fila:', data[0]);
+            
             // Mapear columnas (soportar diferentes nombres)
             const columnMap = {
                 'Teléfono': ['Teléfono', 'Telefono', 'telefono', 'Tel', 'tel', 'Phone', 'phone', 'TELEFONO'],
@@ -3641,8 +3882,17 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
             function getValue(row, field) {
                 const possibleNames = columnMap[field] || [field];
                 for (const name of possibleNames) {
-                    if (row[name] !== undefined && row[name] !== null && row[name] !== '') {
+                    if (row.hasOwnProperty(name) && row[name] !== undefined && row[name] !== null && row[name] !== '') {
                         return row[name];
+                    }
+                }
+                // Buscar sin importar mayúsculas/minúsculas
+                const rowKeys = Object.keys(row);
+                for (const key of rowKeys) {
+                    if (possibleNames.some(n => n.toLowerCase() === key.toLowerCase())) {
+                        if (row[key] !== undefined && row[key] !== null && row[key] !== '') {
+                            return row[key];
+                        }
                     }
                 }
                 return null;
@@ -3668,6 +3918,19 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
                 // Generar ID único para cada registro (permite duplicados de teléfono)
                 const uniqueId = telefono + '-' + index + '-' + Math.random().toString(36).substr(2, 5);
                 
+                // Obtener saldo y tarifa directamente
+                let saldo = getValue(row, 'Saldo');
+                let tarifa = getValue(row, 'Tarifa');
+                
+                // Convertir a número
+                saldo = parseFloat(saldo) || 0;
+                tarifa = parseFloat(tarifa) || 0;
+                
+                // Debug primeras filas
+                if (index < 3) {
+                    console.log(`Fila ${index}: Saldo=${saldo}, Tarifa=${tarifa}, Cliente=${getValue(row, 'Cliente')}`);
+                }
+                
                 // Determinar riesgo basado en días de atraso
                 const diasAtraso = parseInt(getValue(row, 'Días Atraso')) || 0;
                 let riesgo = '🟢 PROBABLE';
@@ -3684,8 +3947,9 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
                     TelefonoOriginal: getValue(row, 'Teléfono') || '',
                     Dirección: getValue(row, 'Dirección') || '',
                     'Días Atraso': diasAtraso,
-                    Saldo: parseFloat(getValue(row, 'Saldo')) || 0,
-                    Tarifa: parseFloat(getValue(row, 'Tarifa')) || 0,
+                    Saldo: saldo,
+                    SaldoOriginal: saldo,
+                    Tarifa: tarifa,
                     'Última Trans.': getValue(row, 'Última Trans.') || new Date().toISOString().split('T')[0],
                     Frecuencia: getValue(row, 'Frecuencia') || 'Semanal',
                     Referencia: getValue(row, 'Referencia') || '',
@@ -3694,6 +3958,10 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
                 });
                 added++;
             });
+            
+            // Debug: verificar que los saldos se guardaron
+            console.log('Total clientes importados:', customClients.length);
+            console.log('Muestra de saldos:', customClients.slice(0, 5).map(c => c.Saldo));
             
             localStorage.setItem('customClients', JSON.stringify(customClients));
             initClients();
