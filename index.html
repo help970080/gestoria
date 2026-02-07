@@ -1963,10 +1963,22 @@
         }
         
         // ===== FILTROS =====
-        function setFilter(filter) {
+        function setFilter(filter, evt) {
             currentFilter = filter;
             document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
+            // Usar evt si se pasa, sino buscar el botón por el filtro
+            if (evt && evt.target) {
+                evt.target.classList.add('active');
+            } else if (event && event.target) {
+                event.target.classList.add('active');
+            } else {
+                // Fallback: buscar el botón correcto
+                document.querySelectorAll('.filter-btn').forEach(btn => {
+                    if (btn.textContent.toLowerCase().includes(filter.substring(0, 4))) {
+                        btn.classList.add('active');
+                    }
+                });
+            }
             render(filterCurrent());
         }
         
@@ -1979,12 +1991,15 @@
                 list = list.filter(c => 
                     c.Cliente.toLowerCase().includes(q) ||
                     String(c.Teléfono || '').includes(q) ||
-                    (c.Dirección && c.Dirección.toLowerCase().includes(q))
+                    (c.Dirección && c.Dirección.toLowerCase().includes(q)) ||
+                    (c.Promotor && c.Promotor.toLowerCase().includes(q))
                 );
             }
             
             // Filtro por estado
             const today = new Date().toISOString().split('T')[0];
+            const clientKey = (c) => c.id || c.Teléfono;
+            
             switch(currentFilter) {
                 case 'pendientes':
                     list = list.filter(c => c.Saldo > 0);
@@ -1993,11 +2008,16 @@
                     list = list.filter(c => c.Saldo <= 0);
                     break;
                 case 'convenios':
-                    list = list.filter(c => convenios[c.Teléfono] && c.Saldo > 0);
+                    list = list.filter(c => {
+                        const key = clientKey(c);
+                        return (convenios[key] || convenios[c.Teléfono]) && c.Saldo > 0;
+                    });
                     break;
                 case 'hoy':
                     list = list.filter(c => {
-                        const todayPayments = (payments[c.Teléfono] || []).filter(p => p.date === today);
+                        const key = clientKey(c);
+                        const clientPayments = payments[key] || payments[c.Teléfono] || [];
+                        const todayPayments = clientPayments.filter(p => p.date === today);
                         return todayPayments.length > 0;
                     });
                     break;
@@ -3329,17 +3349,27 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
             showLoader('Generando PDF...');
             
             // Cargar jsPDF si no está disponible
-            if (typeof jspdf === 'undefined' && typeof jsPDF === 'undefined') {
+            if (typeof window.jspdf === 'undefined') {
                 await new Promise((resolve, reject) => {
                     const script = document.createElement('script');
                     script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-                    script.onload = resolve;
+                    script.onload = () => {
+                        // Esperar un momento para que se inicialice
+                        setTimeout(resolve, 100);
+                    };
                     script.onerror = reject;
                     document.head.appendChild(script);
                 });
             }
             
-            const { jsPDF } = window.jspdf || window;
+            // Verificar que jsPDF esté disponible
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                hideLoader();
+                showToast('❌ Error cargando librería PDF');
+                return;
+            }
+            
+            const jsPDF = window.jspdf.jsPDF;
             const doc = new jsPDF();
             
             const hoy = new Date();
