@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convenio de Pago - LGX y Asociados</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 20px;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            opacity: 0.8;
+            font-size: 0.9rem;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card-title i {
+            color: #9b59b6;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        
+        .info-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .info-value {
+            font-weight: 600;
+            color: #333;
+            text-align: right;
+        }
+        
+        .info-value.monto {
+            color: #e74c3c;
+            font-size: 1.2rem;
+        }
+        
+        .convenio-text {
+            font-size: 0.85rem;
+            color: #555;
+            line-height: 1.6;
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .convenio-text h4 {
+            color: #333;
+            margin: 15px 0 10px 0;
+            font-size: 0.95rem;
+        }
+        
+        .convenio-text h4:first-child {
+            margin-top: 0;
+        }
+        
+        .convenio-text ul {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+        
+        .convenio-text li {
+            margin: 8px 0;
+        }
+        
+        .checkbox-container {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 15px;
+            background: #fff3cd;
+            border-radius: 8px;
+            margin: 20px 0;
+            cursor: pointer;
+        }
+        
+        .checkbox-container input {
+            width: 22px;
+            height: 22px;
+            margin-top: 2px;
+            cursor: pointer;
+        }
+        
+        .checkbox-container label {
+            font-size: 0.9rem;
+            color: #856404;
+            cursor: pointer;
+        }
+        
+        .btn-aceptar {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #27AE60, #2ecc71);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s;
+        }
+        
+        .btn-aceptar:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(39, 174, 96, 0.4);
+        }
+        
+        .btn-aceptar:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .success-card {
+            display: none;
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        .success-card.show {
+            display: block;
+        }
+        
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #27AE60, #2ecc71);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+        
+        .success-icon i {
+            font-size: 40px;
+            color: white;
+        }
+        
+        .success-card h2 {
+            color: #27AE60;
+            margin-bottom: 10px;
+        }
+        
+        .success-card p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+        
+        .confirmation-code {
+            background: #f0f0f0;
+            padding: 15px 25px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #333;
+            margin: 20px 0;
+            display: inline-block;
+        }
+        
+        .timestamp {
+            font-size: 0.8rem;
+            color: #999;
+            margin-top: 15px;
+        }
+        
+        .error-card {
+            display: none;
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        .error-card.show {
+            display: block;
+        }
+        
+        .error-icon {
+            width: 80px;
+            height: 80px;
+            background: #e74c3c;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+        
+        .error-icon i {
+            font-size: 40px;
+            color: white;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .loading.show {
+            display: block;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #9b59b6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: rgba(255,255,255,0.5);
+            font-size: 0.8rem;
+        }
+        
+        .already-accepted {
+            display: none;
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        .already-accepted.show {
+            display: block;
+        }
+        
+        .already-accepted i {
+            font-size: 50px;
+            color: #3498db;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 LGX y Asociados</h1>
+            <p>Convenio de Pago</p>
+        </div>
+        
+        <!-- Loading -->
+        <div class="card loading" id="loadingCard">
+            <div class="spinner"></div>
+            <p>Cargando convenio...</p>
+        </div>
+        
+        <!-- Error -->
+        <div class="card error-card" id="errorCard">
+            <div class="error-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h2>Convenio no encontrado</h2>
+            <p>El link es inválido o el convenio ya no existe.</p>
+        </div>
+        
+        <!-- Ya aceptado -->
+        <div class="card already-accepted" id="alreadyAcceptedCard">
+            <i class="fas fa-check-double"></i>
+            <h2>Convenio ya aceptado</h2>
+            <p>Este convenio fue aceptado el:</p>
+            <div class="confirmation-code" id="previousAcceptDate">-</div>
+            <p class="timestamp">Código de confirmación: <span id="previousCode">-</span></p>
+        </div>
+        
+        <!-- Convenio -->
+        <div id="convenioContent" style="display:none;">
+            <div class="card">
+                <div class="card-title">
+                    <i class="fas fa-user"></i>
+                    Datos del Convenio
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Cliente</span>
+                    <span class="info-value" id="clienteNombre">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Teléfono</span>
+                    <span class="info-value" id="clienteTelefono">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Adeudo Total</span>
+                    <span class="info-value monto" id="montoTotal">$0</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Pago Semanal</span>
+                    <span class="info-value" id="pagoSemanal">$0</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Número de Semanas</span>
+                    <span class="info-value" id="numSemanas">0</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Fecha de Inicio</span>
+                    <span class="info-value" id="fechaInicio">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Fecha de Término</span>
+                    <span class="info-value" id="fechaFin">-</span>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">
+                    <i class="fas fa-file-contract"></i>
+                    Términos y Condiciones
+                </div>
+                <div class="convenio-text">
+                    <h4>OPCIÓN 1 – PAGO DE CONTADO</h4>
+                    <p>EL DEUDOR se obliga a liquidar la cantidad total en un plazo máximo de 30 días.</p>
+                    
+                    <h4>OPCIÓN 2 – PAGO A PLAZOS</h4>
+                    <p>Si EL DEUDOR no realiza el pago de contado en el plazo establecido, se compromete a liquidar el adeudo mediante los pagos semanales acordados, sin que exista prórroga alguna.</p>
+                    
+                    <h4>CONDICIONES:</h4>
+                    <ul>
+                        <li>El incumplimiento de cualquier pago semanal dará por terminado automáticamente este convenio, quedando EL ACREEDOR en libertad de ejercer las acciones legales correspondientes.</li>
+                        <li>No se otorgarán prórrogas bajo ninguna circunstancia.</li>
+                        <li>Los pagos deberán realizarse en las cuentas o medios autorizados por EL ACREEDOR.</li>
+                        <li>Este convenio tiene vigencia a partir de la fecha de aceptación.</li>
+                    </ul>
+                </div>
+                
+                <div class="checkbox-container" onclick="document.getElementById('acceptCheckbox').click()">
+                    <input type="checkbox" id="acceptCheckbox" onchange="updateButton()">
+                    <label for="acceptCheckbox">
+                        He leído y acepto los términos del convenio de pago. Reconozco el adeudo y me comprometo a cumplir con los pagos acordados.
+                    </label>
+                </div>
+                
+                <button class="btn-aceptar" id="btnAceptar" disabled onclick="aceptarConvenio()">
+                    <i class="fas fa-check-circle"></i>
+                    Acepto el Convenio
+                </button>
+            </div>
+        </div>
+        
+        <!-- Success -->
+        <div class="card success-card" id="successCard">
+            <div class="success-icon">
+                <i class="fas fa-check"></i>
+            </div>
+            <h2>¡Convenio Aceptado!</h2>
+            <p>Tu aceptación ha sido registrada exitosamente.</p>
+            <div class="confirmation-code" id="confirmationCode">-</div>
+            <p>Guarda este código como comprobante</p>
+            <p class="timestamp" id="acceptTimestamp">-</p>
+        </div>
+        
+        <div class="footer">
+            <p>LGX y Asociados © 2024</p>
+            <p>Este documento tiene validez legal</p>
+        </div>
+    </div>
+    
+    <script>
+        // Configuración
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyleijT6SjUs5yXDK60Vm7-kNKf0OE6I2PHCPNVf5fj8NA3jlWW9Yk8G_F86pzifJxd/exec';
+        
+        let convenioData = null;
+        let convenioId = null;
+        
+        // Obtener parámetros de la URL
+        function getUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                id: params.get('id'),
+                phone: params.get('phone') || params.get('tel'),
+                cliente: params.get('cliente') || params.get('name'),
+                monto: params.get('monto') || params.get('saldo'),
+                pagoSemanal: params.get('pago') || params.get('semanal'),
+                semanas: params.get('semanas'),
+                fechaInicio: params.get('inicio'),
+                fechaFin: params.get('fin')
+            };
+        }
+        
+        // Inicializar
+        async function init() {
+            const params = getUrlParams();
+            convenioId = params.id;
+            
+            if (!convenioId && !params.phone) {
+                showError();
+                return;
+            }
+            
+            showLoading();
+            
+            // Si tenemos todos los datos en la URL, usarlos directamente
+            if (params.cliente && params.monto) {
+                convenioData = {
+                    id: params.id || 'conv_' + Date.now(),
+                    cliente: decodeURIComponent(params.cliente),
+                    telefono: params.phone,
+                    saldoInicial: parseFloat(params.monto),
+                    pagoSemanal: parseFloat(params.pagoSemanal) || 0,
+                    semanas: parseInt(params.semanas) || 0,
+                    fechaInicio: params.fechaInicio,
+                    fechaFin: params.fechaFin
+                };
+                
+                // Verificar si ya fue aceptado (localStorage)
+                const aceptados = JSON.parse(localStorage.getItem('conveniosAceptados') || '{}');
+                if (aceptados[convenioData.id]) {
+                    showAlreadyAccepted(aceptados[convenioData.id]);
+                    return;
+                }
+                
+                displayConvenio(convenioData);
+                return;
+            }
+            
+            // Si no, intentar cargar desde Google Sheets
+            try {
+                const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getConvenio&id=${convenioId}&phone=${params.phone}`);
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    convenioData = result.data;
+                    
+                    if (convenioData.aceptadoEn) {
+                        showAlreadyAccepted({
+                            fecha: convenioData.aceptadoEn,
+                            codigo: convenioData.codigoAceptacion
+                        });
+                        return;
+                    }
+                    
+                    displayConvenio(convenioData);
+                } else {
+                    showError();
+                }
+            } catch (error) {
+                console.error('Error cargando convenio:', error);
+                // Si falla la carga pero tenemos datos básicos, mostrarlos
+                if (params.cliente && params.monto) {
+                    displayConvenio({
+                        id: params.id,
+                        cliente: decodeURIComponent(params.cliente),
+                        telefono: params.phone,
+                        saldoInicial: parseFloat(params.monto),
+                        pagoSemanal: parseFloat(params.pagoSemanal),
+                        semanas: parseInt(params.semanas),
+                        fechaInicio: params.fechaInicio,
+                        fechaFin: params.fechaFin
+                    });
+                } else {
+                    showError();
+                }
+            }
+        }
+        
+        function showLoading() {
+            document.getElementById('loadingCard').classList.add('show');
+            document.getElementById('convenioContent').style.display = 'none';
+            document.getElementById('errorCard').classList.remove('show');
+            document.getElementById('successCard').classList.remove('show');
+        }
+        
+        function showError() {
+            document.getElementById('loadingCard').classList.remove('show');
+            document.getElementById('errorCard').classList.add('show');
+        }
+        
+        function showAlreadyAccepted(data) {
+            document.getElementById('loadingCard').classList.remove('show');
+            document.getElementById('alreadyAcceptedCard').classList.add('show');
+            document.getElementById('previousAcceptDate').textContent = formatDate(data.fecha);
+            document.getElementById('previousCode').textContent = data.codigo || '-';
+        }
+        
+        function displayConvenio(data) {
+            document.getElementById('loadingCard').classList.remove('show');
+            document.getElementById('convenioContent').style.display = 'block';
+            
+            document.getElementById('clienteNombre').textContent = data.cliente || '-';
+            document.getElementById('clienteTelefono').textContent = formatPhone(data.telefono);
+            document.getElementById('montoTotal').textContent = '$' + formatNumber(data.saldoInicial);
+            document.getElementById('pagoSemanal').textContent = '$' + formatNumber(data.pagoSemanal) + '/semana';
+            document.getElementById('numSemanas').textContent = data.semanas + ' semanas';
+            document.getElementById('fechaInicio').textContent = formatDate(data.fechaInicio);
+            document.getElementById('fechaFin').textContent = formatDate(data.fechaFin);
+        }
+        
+        function formatNumber(n) {
+            return (n || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        
+        function formatPhone(p) {
+            if (!p) return '-';
+            const clean = String(p).replace(/[^0-9]/g, '');
+            if (clean.length === 10) {
+                return clean.replace(/(\d{2})(\d{4})(\d{4})/, '$1 $2 $3');
+            }
+            return p;
+        }
+        
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            try {
+                const date = new Date(dateStr + 'T12:00:00');
+                return date.toLocaleDateString('es-MX', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+            } catch {
+                return dateStr;
+            }
+        }
+        
+        function updateButton() {
+            const checkbox = document.getElementById('acceptCheckbox');
+            const btn = document.getElementById('btnAceptar');
+            btn.disabled = !checkbox.checked;
+        }
+        
+        async function aceptarConvenio() {
+            const btn = document.getElementById('btnAceptar');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+            
+            // Generar código de confirmación
+            const codigo = 'ACE-' + Date.now().toString(36).toUpperCase();
+            const timestamp = new Date().toISOString();
+            
+            // Obtener información del dispositivo
+            const deviceInfo = {
+                userAgent: navigator.userAgent,
+                language: navigator.language,
+                platform: navigator.platform,
+                screenSize: `${screen.width}x${screen.height}`
+            };
+            
+            const aceptacionData = {
+                convenioId: convenioData.id,
+                telefono: convenioData.telefono,
+                cliente: convenioData.cliente,
+                codigo: codigo,
+                aceptadoEn: timestamp,
+                dispositivo: deviceInfo,
+                ip: 'pending' // Se obtendría del servidor
+            };
+            
+            try {
+                // Guardar en Google Sheets
+                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify({
+                        action: 'aceptarConvenio',
+                        data: aceptacionData
+                    })
+                });
+                
+                const result = await response.json();
+                console.log('Resultado:', result);
+            } catch (error) {
+                console.error('Error guardando aceptación:', error);
+                // Continuar aunque falle - guardar localmente
+            }
+            
+            // Guardar localmente
+            const aceptados = JSON.parse(localStorage.getItem('conveniosAceptados') || '{}');
+            aceptados[convenioData.id] = { fecha: timestamp, codigo: codigo };
+            localStorage.setItem('conveniosAceptados', JSON.stringify(aceptados));
+            
+            // Mostrar éxito
+            document.getElementById('convenioContent').style.display = 'none';
+            document.getElementById('successCard').classList.add('show');
+            document.getElementById('confirmationCode').textContent = codigo;
+            document.getElementById('acceptTimestamp').textContent = 'Aceptado el ' + new Date().toLocaleString('es-MX');
+        }
+        
+        // Iniciar
+        init();
+    </script>
+</body>
+</html>
