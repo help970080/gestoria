@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LGX y Asociados Cobranza</title>
+    <title>LeGaXi Asociados Cobranza</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -1227,7 +1227,7 @@
     <div class="login-screen" id="loginScreen">
         <div class="login-box">
             <div class="login-logo">🔐</div>
-            <h2 class="login-title">LGX y Asociados</h2>
+            <h2 class="login-title">LeGaXi Asociados</h2>
             <p class="login-subtitle">Sistema de Cobranza</p>
             <input type="password" class="login-input" id="loginPassword" placeholder="Contraseña" maxlength="20" onkeypress="if(event.key==='Enter')verificarAcceso()">
             <button class="login-btn" onclick="verificarAcceso()">
@@ -1574,7 +1574,7 @@
             <div class="modal-body">
                 <div class="recibo-container" id="reciboContent">
                     <div class="recibo-header">
-                        <div class="recibo-logo">📱 LGX y Asociados</div>
+                        <div class="recibo-logo">📱 LeGaXi Asociados</div>
                         <div class="recibo-empresa">LMV CREDIA SA DE CV</div>
                     </div>
                     <div class="recibo-titulo">RECIBO DE PAGO</div>
@@ -2649,7 +2649,7 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
             
             const r = currentRecibo;
             // SMS más corto
-            let texto = `LGX y Asociados - Recibo ${r.folio}\n`;
+            let texto = `LeGaXi Asociados - Recibo ${r.folio}\n`;
             texto += `Pago: $${fmt(r.monto)}\n`;
             texto += `Fecha: ${r.fecha}\n`;
             if (r.saldoNuevo <= 0) {
@@ -3509,7 +3509,7 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
 
 Por favor revise los términos y presione "Acepto" para confirmar.
 
-_LGX y Asociados_`;
+_LeGaXi Asociados_`;
             
             const phone = String(convenio.telefono).replace(/[^0-9]/g, '');
             const phoneWa = phone.startsWith('52') ? phone : '52' + phone;
@@ -3835,6 +3835,11 @@ _LGX y Asociados_`;
             toast.classList.remove('show');
             void toast.offsetWidth;
             toast.classList.add('show');
+            
+            // Remover clase show después de la animación
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
         }
         
         // ===== ADMINISTRACIÓN =====
