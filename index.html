@@ -13,6 +13,117 @@
             padding-bottom: 70px;
         }
         
+        /* Pantalla de acceso */
+        .login-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        
+        .login-screen.hidden {
+            display: none;
+        }
+        
+        .login-box {
+            background: white;
+            padding: 40px 30px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 350px;
+            width: 90%;
+        }
+        
+        .login-logo {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+        
+        .login-title {
+            font-size: 1.5rem;
+            color: #1F4E79;
+            margin-bottom: 5px;
+            font-weight: 700;
+        }
+        
+        .login-subtitle {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 30px;
+        }
+        
+        .login-input {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 1rem;
+            text-align: center;
+            letter-spacing: 3px;
+            margin-bottom: 15px;
+            transition: border-color 0.3s;
+        }
+        
+        .login-input:focus {
+            outline: none;
+            border-color: #1F4E79;
+        }
+        
+        .login-input.error {
+            border-color: #e74c3c;
+            animation: shake 0.5s;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        
+        .login-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #1F4E79, #2d6da3);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(31, 78, 121, 0.4);
+        }
+        
+        .login-error {
+            color: #e74c3c;
+            font-size: 0.85rem;
+            margin-top: 10px;
+            display: none;
+        }
+        
+        .login-error.show {
+            display: block;
+        }
+        
+        .app-content {
+            display: none;
+        }
+        
+        .app-content.visible {
+            display: block;
+        }
+        
         .header {
             background: linear-gradient(135deg, #1F4E79, #2d6da3);
             color: white;
@@ -1112,6 +1223,22 @@
     </style>
 </head>
 <body>
+    <!-- Pantalla de Acceso -->
+    <div class="login-screen" id="loginScreen">
+        <div class="login-box">
+            <div class="login-logo">🔐</div>
+            <h2 class="login-title">LGX y Asociados</h2>
+            <p class="login-subtitle">Sistema de Cobranza</p>
+            <input type="password" class="login-input" id="loginPassword" placeholder="Contraseña" maxlength="20" onkeypress="if(event.key==='Enter')verificarAcceso()">
+            <button class="login-btn" onclick="verificarAcceso()">
+                <i class="fas fa-unlock"></i> Ingresar
+            </button>
+            <p class="login-error" id="loginError">Contraseña incorrecta</p>
+        </div>
+    </div>
+    
+    <!-- Contenido de la App -->
+    <div class="app-content" id="appContent">
     <header class="header">
         <h1><i class="fas fa-hand-holding-usd"></i> LGX</h1>
         <div style="display:flex;gap:5px;align-items:center;">
@@ -1124,6 +1251,9 @@
             </button>
             <button class="header-btn" onclick="showHistory()">
                 <i class="fas fa-chart-line"></i>
+            </button>
+            <button class="header-btn" onclick="cerrarSesion()" title="Cerrar sesión">
+                <i class="fas fa-sign-out-alt"></i>
             </button>
         </div>
     </header>
@@ -4278,6 +4408,62 @@ _LGX y Asociados_`;
             renderAdminClients();
             showToast('🔄 Base restaurada');
         }
+        
+        // ===== SISTEMA DE ACCESO =====
+        const CLAVE_ACCESO = 'LGX2024'; // Cambia esta contraseña
+        
+        function verificarAcceso() {
+            const input = document.getElementById('loginPassword');
+            const error = document.getElementById('loginError');
+            const password = input.value.trim();
+            
+            if (password === CLAVE_ACCESO) {
+                // Guardar sesión
+                localStorage.setItem('lgx_session', btoa(CLAVE_ACCESO + '_' + Date.now()));
+                mostrarApp();
+            } else {
+                input.classList.add('error');
+                error.classList.add('show');
+                setTimeout(() => {
+                    input.classList.remove('error');
+                    error.classList.remove('show');
+                }, 2000);
+                input.value = '';
+                input.focus();
+            }
+        }
+        
+        function mostrarApp() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('appContent').classList.add('visible');
+        }
+        
+        function cerrarSesion() {
+            if (confirm('¿Cerrar sesión?')) {
+                localStorage.removeItem('lgx_session');
+                document.getElementById('loginScreen').classList.remove('hidden');
+                document.getElementById('appContent').classList.remove('visible');
+                document.getElementById('loginPassword').value = '';
+            }
+        }
+        
+        function verificarSesion() {
+            const session = localStorage.getItem('lgx_session');
+            if (session) {
+                try {
+                    const decoded = atob(session);
+                    if (decoded.startsWith(CLAVE_ACCESO + '_')) {
+                        mostrarApp();
+                        return true;
+                    }
+                } catch (e) {}
+            }
+            return false;
+        }
+        
+        // Verificar sesión al cargar
+        verificarSesion();
     </script>
+    </div><!-- Cierre de app-content -->
 </body>
 </html>
