@@ -3514,12 +3514,118 @@ _LeGaXi Asociados_`;
             const phone = String(convenio.telefono).replace(/[^0-9]/g, '');
             const phoneWa = phone.startsWith('52') ? phone : '52' + phone;
             
-            // Copiar link al portapapeles
-            navigator.clipboard.writeText(link).then(() => {
-                showToast('📋 Link copiado al portapapeles');
-            }).catch(() => {});
+            // Mostrar menú de opciones para compartir
+            mostrarMenuCompartir(mensaje, link, phoneWa);
+        }
+        
+        function mostrarMenuCompartir(mensaje, link, phoneWa) {
+            const modal = document.createElement('div');
+            modal.className = 'modal active';
+            modal.id = 'modalCompartir';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width:400px;">
+                    <div class="modal-header" style="background:#25D366;">
+                        <h3>📤 Compartir Convenio</h3>
+                        <button class="modal-close" onclick="cerrarMenuCompartir()">&times;</button>
+                    </div>
+                    <div class="modal-body" style="padding:20px;">
+                        
+                        <button onclick="compartirNativo()" style="width:100%;padding:15px;margin-bottom:10px;background:linear-gradient(135deg,#25D366,#128C7E);color:white;border:none;border-radius:10px;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;">
+                            <i class="fab fa-whatsapp" style="font-size:1.3rem;"></i> Compartir por WhatsApp
+                            <div style="font-size:0.7rem;opacity:0.9;">(Recomendado en celular)</div>
+                        </button>
+                        
+                        <button onclick="copiarMensaje()" style="width:100%;padding:15px;margin-bottom:10px;background:linear-gradient(135deg,#3498db,#2980b9);color:white;border:none;border-radius:10px;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;">
+                            <i class="fas fa-copy"></i> Copiar mensaje completo
+                        </button>
+                        
+                        <button onclick="copiarSoloLink()" style="width:100%;padding:15px;margin-bottom:10px;background:linear-gradient(135deg,#9b59b6,#8e44ad);color:white;border:none;border-radius:10px;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;">
+                            <i class="fas fa-link"></i> Copiar solo el link
+                        </button>
+                        
+                        <button onclick="abrirWhatsAppDirecto()" style="width:100%;padding:15px;margin-bottom:10px;background:linear-gradient(135deg,#666,#444);color:white;border:none;border-radius:10px;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;">
+                            <i class="fab fa-whatsapp"></i> Abrir chat de WhatsApp
+                            <div style="font-size:0.7rem;opacity:0.9;">(Abre el contacto)</div>
+                        </button>
+                        
+                        <div style="margin-top:15px;padding:10px;background:#f5f5f5;border-radius:8px;font-size:0.75rem;color:#666;">
+                            <strong>💡 Tip:</strong> En celular, usa "Compartir por WhatsApp" para enviar directo sin abrir navegador.
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
             
-            // Abrir WhatsApp
+            // Guardar datos para usar en las funciones
+            window._compartirData = { mensaje, link, phoneWa };
+        }
+        
+        function cerrarMenuCompartir() {
+            const modal = document.getElementById('modalCompartir');
+            if (modal) modal.remove();
+        }
+        
+        async function compartirNativo() {
+            const { mensaje, link } = window._compartirData;
+            
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: 'Convenio de Pago - LeGaXi Asociados',
+                        text: mensaje
+                    });
+                    cerrarMenuCompartir();
+                    showToast('✅ Compartido exitosamente');
+                } catch (err) {
+                    if (err.name !== 'AbortError') {
+                        // Si falla, copiar al portapapeles
+                        copiarMensaje();
+                    }
+                }
+            } else {
+                // Navegador no soporta Web Share API, copiar al portapapeles
+                copiarMensaje();
+            }
+        }
+        
+        function copiarMensaje() {
+            const { mensaje } = window._compartirData;
+            navigator.clipboard.writeText(mensaje).then(() => {
+                cerrarMenuCompartir();
+                showToast('📋 Mensaje copiado - Pégalo en WhatsApp');
+            }).catch(() => {
+                // Fallback para navegadores sin clipboard API
+                const textarea = document.createElement('textarea');
+                textarea.value = mensaje;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                cerrarMenuCompartir();
+                showToast('📋 Mensaje copiado - Pégalo en WhatsApp');
+            });
+        }
+        
+        function copiarSoloLink() {
+            const { link } = window._compartirData;
+            navigator.clipboard.writeText(link).then(() => {
+                cerrarMenuCompartir();
+                showToast('🔗 Link copiado al portapapeles');
+            }).catch(() => {
+                const textarea = document.createElement('textarea');
+                textarea.value = link;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                cerrarMenuCompartir();
+                showToast('🔗 Link copiado al portapapeles');
+            });
+        }
+        
+        function abrirWhatsAppDirecto() {
+            const { mensaje, phoneWa } = window._compartirData;
+            cerrarMenuCompartir();
             window.open(`https://wa.me/${phoneWa}?text=${encodeURIComponent(mensaje)}`, '_blank');
         }
         
@@ -3714,20 +3820,21 @@ _LeGaXi Asociados_`;
             
             hideLoader();
             
-            // Guardar y ofrecer enviar por WhatsApp
+            // Guardar PDF
             const nombreArchivo = `Convenio_${convenio.cliente.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
             doc.save(nombreArchivo);
             
-            showToast('📄 PDF descargado: ' + nombreArchivo);
+            showToast('📄 PDF descargado');
             
-            // Preguntar si enviar por WhatsApp
+            // Mostrar menú para compartir mensaje
             setTimeout(() => {
-                if (confirm('El PDF se ha descargado. ¿Deseas abrir WhatsApp para enviarlo al cliente?')) {
-                    const phone = String(convenio.telefono || '').replace(/[^0-9]/g, '');
-                    const phoneWa = phone.startsWith('52') ? phone : '52' + phone;
-                    const mensaje = `Hola ${convenio.cliente.split(' ')[0]}, le envío el convenio de pago acordado. Por favor revíselo y fírmelo. Gracias.`;
-                    window.open(`https://wa.me/${phoneWa}?text=${encodeURIComponent(mensaje)}`, '_blank');
-                }
+                const phone = String(convenio.telefono || '').replace(/[^0-9]/g, '');
+                const phoneWa = phone.startsWith('52') ? phone : '52' + phone;
+                const mensaje = `Hola ${convenio.cliente.split(' ')[0]}, le envío el convenio de pago acordado. Por favor revíselo y fírmelo. Gracias.
+
+_LeGaXi Asociados_`;
+                
+                mostrarMenuCompartir(mensaje, '', phoneWa);
             }, 500);
         }
         
