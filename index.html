@@ -1875,6 +1875,8 @@
                 saldoAjustes = {};
                 const seenPaymentIds = new Set();
                 
+                console.log('Procesando pagos, muestra del primero:', cloudData.pagos?.[0]);
+                
                 (cloudData.pagos || []).forEach(p => {
                     // Evitar duplicados
                     if (p.id && seenPaymentIds.has(p.id)) return;
@@ -1887,6 +1889,9 @@
                     if (!payments[clientKey]) payments[clientKey] = [];
                     const amount = parseFloat(p.amount || p.monto) || 0;
                     
+                    // Obtener nombre del cliente - probar varias formas
+                    const nombreCliente = p.Cliente || p.cliente || p.CLIENTE || '';
+                    
                     payments[clientKey].push({
                         amount: amount,
                         date: p.date || p.fecha,
@@ -1897,7 +1902,7 @@
                         saldoDespues: parseFloat(p.saldoDespues) || 0,
                         timestamp: p.timestamp,
                         id: p.id,
-                        cliente: p.Cliente || p.cliente // Guardar nombre del cliente
+                        cliente: nombreCliente
                     });
                     saldoAjustes[clientKey] = (saldoAjustes[clientKey] || 0) + amount;
                 });
@@ -2745,20 +2750,40 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
             const allPayments = [];
             const seenIds = new Set(); // Para evitar duplicados
             
-            Object.entries(payments).forEach(([phone, clientPayments]) => {
-                const client = processedClients.find(c => (c.id || c.Teléfono) === phone || c.Teléfono === phone);
-                
+            Object.entries(payments).forEach(([key, clientPayments]) => {
                 clientPayments.forEach(p => {
                     // Evitar duplicados por ID
                     if (p.id && seenIds.has(p.id)) return;
                     if (p.id) seenIds.add(p.id);
                     
                     if (p.date >= startDate && p.date <= endDate) {
+                        // Buscar nombre del cliente de múltiples formas
+                        let clientName = p.cliente || p.Cliente || null;
+                        
+                        if (!clientName) {
+                            // Buscar por la key (puede ser clienteId o teléfono)
+                            let client = processedClients.find(c => 
+                                (c.id && c.id === key) || 
+                                c.Teléfono === key ||
+                                c.TelefonoOriginal === key
+                            );
+                            
+                            // Si no encuentra, buscar limpiando el teléfono
+                            if (!client) {
+                                const cleanKey = String(key).replace(/[^0-9]/g, '');
+                                client = processedClients.find(c => {
+                                    const cleanPhone = String(c.Teléfono || '').replace(/[^0-9]/g, '');
+                                    return cleanPhone === cleanKey || cleanPhone.endsWith(cleanKey) || cleanKey.endsWith(cleanPhone);
+                                });
+                            }
+                            
+                            clientName = client ? client.Cliente : 'Desconocido';
+                        }
+                        
                         allPayments.push({
                             ...p,
-                            phone,
-                            // Usar nombre del pago si existe, sino buscar en cliente
-                            clientName: p.cliente || p.Cliente || (client ? client.Cliente : 'Desconocido')
+                            phone: key,
+                            clientName: clientName
                         });
                     }
                 });
