@@ -1873,7 +1873,13 @@
                 // Convertir pagos de array a objeto por ID o teléfono
                 payments = {};
                 saldoAjustes = {};
+                const seenPaymentIds = new Set();
+                
                 (cloudData.pagos || []).forEach(p => {
+                    // Evitar duplicados
+                    if (p.id && seenPaymentIds.has(p.id)) return;
+                    if (p.id) seenPaymentIds.add(p.id);
+                    
                     // Usar clienteId si existe, sino Teléfono
                     const clientKey = p.clienteId || p.Teléfono || p.telefono;
                     if (!clientKey) return;
@@ -1890,17 +1896,10 @@
                         saldoAntes: parseFloat(p.saldoAntes) || 0,
                         saldoDespues: parseFloat(p.saldoDespues) || 0,
                         timestamp: p.timestamp,
-                        id: p.id
+                        id: p.id,
+                        cliente: p.Cliente || p.cliente // Guardar nombre del cliente
                     });
                     saldoAjustes[clientKey] = (saldoAjustes[clientKey] || 0) + amount;
-                    
-                    // También indexar por teléfono para compatibilidad
-                    const phone = p.Teléfono || p.telefono;
-                    if (phone && phone !== clientKey) {
-                        if (!payments[phone]) payments[phone] = [];
-                        payments[phone].push(payments[clientKey][payments[clientKey].length - 1]);
-                        saldoAjustes[phone] = (saldoAjustes[phone] || 0) + amount;
-                    }
                 });
                 
                 // Convenios - convertir array a objeto por teléfono
@@ -2744,15 +2743,22 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
         
         function getWeekPayments(startDate, endDate) {
             const allPayments = [];
+            const seenIds = new Set(); // Para evitar duplicados
+            
             Object.entries(payments).forEach(([phone, clientPayments]) => {
-                const client = processedClients.find(c => c.Teléfono === phone) || 
-                               getActiveClients().find(c => c.Teléfono === phone);
+                const client = processedClients.find(c => (c.id || c.Teléfono) === phone || c.Teléfono === phone);
+                
                 clientPayments.forEach(p => {
+                    // Evitar duplicados por ID
+                    if (p.id && seenIds.has(p.id)) return;
+                    if (p.id) seenIds.add(p.id);
+                    
                     if (p.date >= startDate && p.date <= endDate) {
                         allPayments.push({
                             ...p,
                             phone,
-                            clientName: client ? client.Cliente : 'Desconocido'
+                            // Usar nombre del pago si existe, sino buscar en cliente
+                            clientName: p.cliente || p.Cliente || (client ? client.Cliente : 'Desconocido')
                         });
                     }
                 });
