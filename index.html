@@ -3900,6 +3900,7 @@ _LeGaXi Asociados_`;
         }
         
         function riskClass(r) {
+            if (!r) return 'risk-red';
             if (r.includes('🟢')) return 'risk-green';
             if (r.includes('🟡')) return 'risk-yellow';
             if (r.includes('🟠')) return 'risk-orange';
