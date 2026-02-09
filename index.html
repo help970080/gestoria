@@ -1907,12 +1907,26 @@
                     saldoAjustes[clientKey] = (saldoAjustes[clientKey] || 0) + amount;
                 });
                 
-                // Convenios - convertir array a objeto por teléfono
+                // Convenios - convertir array a objeto por teléfono normalizado
                 convenios = {};
                 (cloudData.convenios || []).forEach(c => {
                     const phone = c.Teléfono || c.telefono || c.clienteId;
-                    if (phone) convenios[phone] = c;
+                    if (phone) {
+                        // Guardar con múltiples claves para encontrar más fácil
+                        convenios[phone] = c;
+                        // También guardar con teléfono limpio
+                        const cleanPhone = String(phone).replace(/[^0-9]/g, '');
+                        if (cleanPhone && cleanPhone !== phone) {
+                            convenios[cleanPhone] = c;
+                        }
+                        // También guardar últimos 10 dígitos
+                        if (cleanPhone.length >= 10) {
+                            convenios[cleanPhone.slice(-10)] = c;
+                        }
+                    }
                 });
+                
+                console.log('Convenios cargados:', Object.keys(convenios).length);
                 
                 // Guardar localmente como backup
                 localStorage.setItem('clientPayments', JSON.stringify(payments));
@@ -3105,8 +3119,12 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
                 const todayAmount = todayPaid.reduce((s, p) => s + p.amount, 0);
                 const isLiquidado = c.Saldo <= 0;
                 
-                // Convenio
-                const convenio = convenios[c.Teléfono];
+                // Convenio - buscar por múltiples formas
+                const cleanPhoneForConvenio = String(c.Teléfono || '').replace(/[^0-9]/g, '');
+                const convenio = convenios[c.Teléfono] || 
+                                 convenios[cleanPhoneForConvenio] || 
+                                 convenios[cleanPhoneForConvenio.slice(-10)] ||
+                                 convenios[c.id];
                 const convenioInfo = getConvenioStatus(c.Teléfono, c.Saldo);
                 
                 const distHtml = hasSaved && c.distance !== null
@@ -3173,7 +3191,10 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
                     : `Hola ${clientName}, le recordamos su adeudo de $${fmt(c.Saldo)}. Favor de comunicarse. LMV CREDIA`;
                 
                 const cleanPhone = String(c.Teléfono || '').replace(/[^0-9]/g, '');
-                const phoneForWa = cleanPhone.startsWith('52') ? cleanPhone : '52' + cleanPhone;
+                const hasValidPhone = cleanPhone.length >= 10;
+                const phoneForWa = hasValidPhone 
+                    ? (cleanPhone.startsWith('52') ? cleanPhone : '52' + cleanPhone)
+                    : '';
                 
                 // Botón de convenio
                 const convenioBtnHtml = !isLiquidado ? `
@@ -3215,13 +3236,17 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
                         ${convenioCardHtml}
                         ${paymentsHtml}
                         <div class="action-grid">
-                            <a href="tel:${c.Teléfono}" class="act-btn btn-call">
+                            <a href="tel:${c.Teléfono}" class="act-btn btn-call" ${!hasValidPhone ? 'style="opacity:0.5;pointer-events:none;"' : ''}>
                                 <i class="fas fa-phone"></i>Llamar
                             </a>
+                            ${hasValidPhone ? `
                             <a href="https://wa.me/${phoneForWa}?text=${encodeURIComponent(msgSimple)}" class="act-btn btn-wapp" target="_blank">
                                 <i class="fab fa-whatsapp"></i>WhatsApp
-                            </a>
-                            <button class="act-btn btn-wapp-strong" onclick="event.stopPropagation(); openWappModal('${c.Teléfono}', '${esc(c.Cliente)}', ${c.Saldo}, ${c['Días Atraso']})">
+                            </a>` : `
+                            <span class="act-btn btn-wapp" style="opacity:0.5;cursor:not-allowed;">
+                                <i class="fab fa-whatsapp"></i>Sin Tel.
+                            </span>`}
+                            <button class="act-btn btn-wapp-strong" onclick="event.stopPropagation(); ${hasValidPhone ? `openWappModal('${c.Teléfono}', '${esc(c.Cliente)}', ${c.Saldo}, ${c['Días Atraso']})` : `showToast('❌ Cliente sin teléfono válido')`}">
                                 <i class="fas fa-gavel"></i>Cobranza
                             </button>
                         </div>
@@ -3250,7 +3275,11 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
         let currentConvenioClient = null;
         
         function getConvenioStatus(phone, saldoActual) {
-            const convenio = convenios[phone];
+            // Buscar convenio por múltiples formas
+            const cleanPhone = String(phone || '').replace(/[^0-9]/g, '');
+            const convenio = convenios[phone] || 
+                             convenios[cleanPhone] || 
+                             convenios[cleanPhone.slice(-10)];
             if (!convenio) return null;
             
             const inicio = new Date(convenio.fechaInicio);
@@ -3290,7 +3319,11 @@ _Fundamento: Arts. 2104-2118 Código Civil Federal_
             document.getElementById('convenioClientName').textContent = name;
             document.getElementById('convenioClientDebt').textContent = '$' + fmt(saldo);
             
-            const convenio = convenios[phone];
+            // Buscar convenio por múltiples formas
+            const cleanPhone = String(phone || '').replace(/[^0-9]/g, '');
+            const convenio = convenios[phone] || 
+                             convenios[cleanPhone] || 
+                             convenios[cleanPhone.slice(-10)];
             
             if (convenio) {
                 // Mostrar convenio existente
