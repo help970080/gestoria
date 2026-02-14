@@ -2278,109 +2278,254 @@
             );
         }
         
-        // ===== MENSAJES WHATSAPP =====
+        // ===== MENSAJES WHATSAPP MEJORADOS =====
+        function getFechaLimite(dias) {
+            const fecha = new Date();
+            let diasHabiles = 0;
+            
+            while (diasHabiles < dias) {
+                fecha.setDate(fecha.getDate() + 1);
+                const diaSemana = fecha.getDay();
+                if (diaSemana !== 0 && diaSemana !== 6) {
+                    diasHabiles++;
+                }
+            }
+            
+            const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                           'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+            
+            return `${fecha.getDate()} de ${meses[fecha.getMonth()]} ${fecha.getFullYear()}`;
+        }
+        
         function getMensajeLegal(c) {
-            const nombre = String(c.Cliente || '').split(' ')[0];
+            const nombre = String(c.Cliente || '').split(' ')[0].toUpperCase();
             const saldo = fmt(c.Saldo);
             const dias = c['Días Atraso'];
             
-            // Si está liquidado
+            // LIQUIDADO - Refuerzo positivo
             if (c.Saldo <= 0) {
-                return `Estimado(a) ${nombre}:
+                return `✅ *CUENTA LIQUIDADA*
 
-¡Felicidades! 🎉 Su cuenta ha sido *LIQUIDADA*.
+Estimado(a) ${nombre}:
 
-Agradecemos su puntualidad y confianza.
+Su expediente crediticio ha sido *CERRADO FAVORABLEMENTE*.
 
-_LMV CREDIA SA DE CV_`;
-            }
-            
-            if (dias <= 90) {
-                return `Estimado(a) ${nombre}:
+✓ Sin adeudos pendientes
+✓ Historial positivo registrado
+✓ Elegible para nuevos créditos
 
-Le recordamos que tiene un adeudo de *$${saldo}* con ${dias} días de atraso.
-
-Por favor regularice su situación.
-
-📞 Contáctenos para convenio de pago.
-
-_LMV CREDIA SA DE CV_`;
-            }
-            
-            if (dias <= 180) {
-                return `⚠️ *AVISO DE COBRANZA*
-
-C. ${nombre}
-
-Adeudo: *$${saldo}*
-Atraso: *${dias} días*
-
-Se le requiere liquidar en *5 DÍAS HÁBILES* o establecer convenio.
-
-De no hacerlo se procederá legalmente:
-• Demanda ejecutiva mercantil
-• Reporte a Buró de Crédito
-
-📞 Comuníquese para evitar acciones legales.
+Gracias por su cumplimiento.
 
 _LMV CREDIA SA DE CV_
-_Depto. Recuperación_`;
+_Dpto. Cobranza_`;
             }
             
-            if (dias <= 365) {
-                return `🚨 *REQUERIMIENTO LEGAL DE PAGO*
+            // FASE 1: 1-90 días - Recordatorio profesional con urgencia
+            if (dias <= 90) {
+                return `📋 *NOTIFICACIÓN DE ADEUDO*
 
-C. ${nombre}
+${nombre}:
 
-Su cuenta presenta:
-💰 Adeudo: *$${saldo}*
-📅 Atraso: *${dias} días*
+*EXPEDIENTE:* ${c.Folio || c.Teléfono}
+*SALDO VENCIDO:* $${saldo}
+*DÍAS DE MORA:* ${dias}
 
-⚖️ *ÚLTIMA OPORTUNIDAD* antes de turnar su expediente al área jurídica.
+⚠️ Su cuenta presenta irregularidad en el historial de pagos.
 
-*CONSECUENCIAS LEGALES:*
-1️⃣ Demanda Ejecutiva Mercantil (Art. 1391 Cód. Comercio)
-2️⃣ *EMBARGO DE BIENES*
-3️⃣ Reporte permanente a Buró de Crédito
-4️⃣ Gastos judiciales a su cargo (+20-40%)
+*CONSECUENCIAS ACTUALES:*
+• Intereses moratorios acumulándose
+• Comisiones por gestión de cobranza
+• Afectación a su récord crediticio
 
-Tiene *5 DÍAS HÁBILES* para contactarnos.
+*SOLUCIÓN INMEDIATA:*
+Pague HOY y evite cargos adicionales.
+O establezca un convenio de pago.
 
-📞 Llame AHORA para convenio.
+📞 Responda este mensaje en las próximas 24 hrs.
 
-_Art. 284 Bis Código Penal Federal_
-
-*LMV CREDIA SA DE CV*`;
-            }
-            
-            return `🔴 *NOTIFICACIÓN LEGAL FINAL*
-
-C. ${nombre}
-
-*ADEUDO VENCIDO: $${saldo}*
-*MORA: ${dias} DÍAS*
-
-Su expediente ha sido turnado al *ÁREA JURÍDICA* para inicio de:
-
-⚖️ *DEMANDA EJECUTIVA MERCANTIL*
-(Arts. 1391-1414 Código de Comercio)
-
-📋 *ACCIONES EN PROCESO:*
-✗ Preparación de demanda
-✗ Investigación patrimonial para *EMBARGO*
-✗ Actualización en Buró de Crédito
-✗ Cálculo de intereses moratorios
-
-⏰ *TIENE 72 HORAS* para comunicarse.
-
-Una vez presentada la demanda, *NO HABRÁ NEGOCIACIÓN* y usted pagará TODOS los gastos del juicio.
-
-📞 *ÚLTIMA OPORTUNIDAD*
-
-_Fundamento: Arts. 2104-2118 Código Civil Federal_
+_Art. 78 Ley General de Títulos y Operaciones de Crédito_
 
 *LMV CREDIA SA DE CV*
-*Dirección Jurídica*`;
+*Recuperación Extrajudicial*`;
+            }
+            
+            // FASE 2: 91-180 días - Advertencia formal con plazos específicos
+            if (dias <= 180) {
+                return `⚠️ *REQUERIMIENTO EXTRAJUDICIAL DE PAGO*
+
+*PARA:* ${nombre}
+*EXPEDIENTE:* ${c.Folio || c.Teléfono}
+
+📊 *SITUACIÓN ACTUAL:*
+Adeudo: *$${saldo}*
+Mora: *${dias} días*
+Calificación: *CARTERA VENCIDA*
+
+🚨 *NOTIFICACIÓN FORMAL:*
+
+Se le conceden *5 DÍAS HÁBILES* (contados a partir de hoy) para:
+
+1️⃣ Liquidar el adeudo completo, O
+2️⃣ Formalizar convenio de pago
+
+*DE NO ATENDER ESTE REQUERIMIENTO:*
+
+❌ Su expediente será turnado al área jurídica
+❌ Reporte definitivo a Buró de Crédito
+❌ Demanda ejecutiva mercantil procedente
+❌ Costos judiciales y honorarios a su cargo (30-50% adicional)
+❌ Investigación patrimonial para embargo
+
+⏰ *PLAZO MÁXIMO:* ${getFechaLimite(5)} a las 18:00 hrs
+
+📞 *CONTACTO URGENTE REQUERIDO*
+
+_Fundamento Legal:_
+_Art. 1391 Código de Comercio_
+_Arts. 148-152 Ley de Instituciones de Crédito_
+
+*LMV CREDIA SA DE CV*
+*Área de Recuperación*`;
+            }
+            
+            // FASE 3: 181-365 días - Último aviso pre-legal (máxima presión)
+            if (dias <= 365) {
+                return `🚨 *ÚLTIMO AVISO PREVIO A DEMANDA*
+
+*C. ${nombre}*
+*EXPEDIENTE: ${c.Folio || c.Teléfono}*
+
+📍 *ESTADO DEL CASO:*
+💰 Adeudo Total: *$${saldo}*
+📅 Días en Mora: *${dias} días*
+📊 Status: *IRRECUPERABLE - PREJURÍDICO*
+
+⚖️ *SITUACIÓN LEGAL CRÍTICA*
+
+Su caso ha sido ESCALADO al área jurídica y se encuentra en revisión para presentación de demanda ejecutiva mercantil.
+
+*PROCEDIMIENTO EN PREPARACIÓN:*
+
+1️⃣ *DEMANDA EJECUTIVA MERCANTIL*
+   Base: Art. 1391 Código de Comercio
+   Resultado: Sentencia inmediata
+   
+2️⃣ *EMBARGO PRECAUTORIO DE BIENES*
+   • Cuentas bancarias
+   • Vehículos
+   • Bienes inmuebles
+   • Salarios (hasta 30% según Art. 110 Ley Federal del Trabajo)
+   
+3️⃣ *REPORTE DEFINITIVO BURÓ DE CRÉDITO*
+   Permanencia: 6 años mínimo
+   Impacto: Todas sus líneas de crédito futuras
+   
+4️⃣ *GASTOS JUDICIALES A SU CARGO*
+   • Honorarios abogados (35-40%)
+   • Costas procesales
+   • Intereses moratorios agravados
+   • Actualización inflacionaria
+   
+5️⃣ *INVESTIGACIÓN PATRIMONIAL COMPLETA*
+   Incluye: empleo, bienes, avales, cónyuges
+
+🔴 *CUENTA REGRESIVA: 72 HORAS*
+
+Fecha límite: *${getFechaLimite(3)} 18:00 hrs*
+
+Después de esta fecha *NO HABRÁ NEGOCIACIÓN*.
+Todo pago deberá hacerse por sentencia judicial.
+
+📞 *ÚLTIMA OPORTUNIDAD - COMUNÍQUESE YA*
+
+⚠️ Este es el último contacto extrajudicial. 
+El siguiente será citatorio judicial.
+
+_Arts. 1054-1390 Código de Comercio_
+_Art. 284 Bis Código Penal Federal - Fraude_
+_NOM-151-SCFI-2016 Crédito al Consumo_
+
+*LMV CREDIA SA DE CV*
+*Departamento Jurídico - Recuperación Judicial*`;
+            }
+            
+            // FASE 4: +365 días - Notificación de demanda en proceso
+            return `🔴 *NOTIFICACIÓN LEGAL - DEMANDA EN PROCESO*
+
+*C. ${nombre}*
+*EXPEDIENTE JUDICIAL EN TRÁMITE*
+*No. Interno: ${c.Folio || c.Teléfono}*
+
+━━━━━━━━━━━━━━━━━━━━━
+
+⚖️ *SU EXPEDIENTE HA SIDO JUDICIALIZADO*
+
+📋 *DATOS DEL ADEUDO:*
+Monto Reclamado: *$${saldo}*
+Días de Incumplimiento: *${dias} días*
+Intereses Moratorios: *En cálculo*
+Costas Procesales: *A determinar*
+
+━━━━━━━━━━━━━━━━━━━━━
+
+🚨 *ACCIONES LEGALES INICIADAS:*
+
+✗ Radicación de expediente en Juzgado Mercantil
+✗ Preparación de emplazamiento oficial
+✗ Solicitud de embargo precautorio
+✗ Investigación patrimonial autorizada
+✗ Notificación a Buró de Crédito (cuenta irrecuperable)
+✗ Denuncia ante CONDUSEF por incumplimiento
+
+*MEDIDAS CAUTELARES SOLICITADAS:*
+• Aseguramiento de cuentas bancarias
+• Embargo de bienes muebles e inmuebles
+• Retención salarial hasta 30%
+• Afectación garantías y avales
+
+━━━━━━━━━━━━━━━━━━━━━
+
+⏰ *PLAZO FINAL: 48 HORAS*
+
+Esta es su ÚLTIMA VENTANA para arreglo extrajudicial.
+
+Después de ${getFechaLimite(2)} a las 17:00 hrs:
+• Se presentará formalmente la demanda
+• El monto aumentará 40-60% por costos legales
+• NO habrá posibilidad de negociación
+• Usted será notificado por actuario judicial
+• Antecedentes legales en su historial crediticio
+
+━━━━━━━━━━━━━━━━━━━━━
+
+📞 *CONTACTO INMEDIATO OBLIGATORIO*
+
+Ignore este mensaje bajo su propio riesgo.
+
+La demanda procederá automáticamente si no se recibe contacto verificable dentro del plazo establecido.
+
+━━━━━━━━━━━━━━━━━━━━━
+
+*FUNDAMENTO LEGAL:*
+
+→ Arts. 1391-1414 Código de Comercio
+→ Arts. 2104-2118 Código Civil Federal  
+→ Art. 387 Fracción XVI Código Penal Federal
+→ Ley Federal de Protección al Consumidor
+→ Circular Única de Bancos - Art. 303
+
+_"El deudor que no cumpla sus obligaciones_
+_en tiempo y forma será responsable de los daños_
+_y perjuicios que cause" - Art. 2104 CCF_
+
+━━━━━━━━━━━━━━━━━━━━━
+
+*LMV CREDIA SA DE CV*
+*Dirección General Jurídica*
+*Departamento de Litigio y Recuperación*
+
+⚠️ *MENSAJE CON EFECTO LEGAL*
+_Conserve esta notificación como comprobante_`;
         }
         
         function openWappModal(phone, name, saldo, dias) {
