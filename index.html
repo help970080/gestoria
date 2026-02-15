@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>LeGaXi Asociados Cobranza</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://script.google.com/macros/s/AKfycbw4czhOikZJzOwxgFvPt8rE6z5PHw9PKg8LhvKzAADyWK0qoQrPBnANC-sodoZ8A62N/exec">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -1948,6 +1948,16 @@
             updateSyncStatus();
             
             hideLoader();
+            
+            // Inicializar sistema de promesas
+            setTimeout(() => {
+                verificarPromesasVencidas();
+                if (Object.keys(convenios).length > 0) {
+                    convertirConveniosAPromesas();
+                }
+                actualizarBadgePagosHoy();
+                console.log('✅ Sistema de promesas inicializado');
+            }, 1000);
             
             // Listeners de conexión
             window.addEventListener('online', onOnline);
@@ -5667,16 +5677,6 @@ _LeGaXi Asociados_`;
             const date = new Date(isoDate);
             return date.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
         }
-        
-        // Verificar promesas vencidas al cargar
-        verificarPromesasVencidas();
-        
-        // Convertir convenios en promesas si aún no se ha hecho
-        if (Object.keys(convenios).length > 0) {
-            convertirConveniosAPromesas();
-        }
-        
-        actualizarBadgePagosHoy();
         
         // Actualizar badge cada minuto
         setInterval(() => {
