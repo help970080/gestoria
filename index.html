@@ -1941,11 +1941,14 @@
             
             initClients();
             render(filterCurrent());
-            document.getElementById('searchInput').addEventListener('input', doSearch);
+            document.getElementById('searchInput').addEventListener('input', debounce(doSearch, 300));
             document.getElementById('payDate').valueAsDate = new Date();
             document.getElementById('payCapturista').value = lastCapturista;
             updateCollectedTotal();
             updateSyncStatus();
+            
+            // Configurar infinite scroll
+            setupInfiniteScroll();
             
             hideLoader();
             
@@ -3593,9 +3596,23 @@ _Conserve esta notificación como comprobante_`;
         function doSearch() { render(filterCurrent()); }
         
         // ===== RENDER =====
+        // ═══════════════════════════════════════════════════════════════════════════
+        // SISTEMA DE RENDER OPTIMIZADO CON LAZY LOADING
+        // ═══════════════════════════════════════════════════════════════════════════
+        
+        let currentBatch = 0;
+        const BATCH_SIZE = 30; // Cargar 30 clientes a la vez
+        let currentClientsList = [];
+        let isLoadingMore = false;
+        
         function render(list) {
-            const container = document.getElementById('clientList');
+            currentClientsList = list;
+            currentBatch = 0;
             
+            const container = document.getElementById('clientList');
+            container.innerHTML = '';
+            
+            // Actualizar contadores
             const total = list.reduce((s, c) => s + (c.Saldo || 0), 0);
             document.getElementById('numClients').textContent = list.length;
             document.getElementById('totalMoney').textContent = '$' + fmt(total);
@@ -3605,7 +3622,26 @@ _Conserve esta notificación como comprobante_`;
                 return;
             }
             
-            container.innerHTML = list.map((c, i) => {
+            // Renderizar primer lote
+            renderBatch();
+        }
+        
+        function renderBatch() {
+            if (isLoadingMore) return;
+            
+            const list = currentClientsList;
+            const container = document.getElementById('clientList');
+            
+            const start = currentBatch * BATCH_SIZE;
+            const end = Math.min(start + BATCH_SIZE, list.length);
+            
+            if (start >= list.length) return;
+            
+            const batch = list.slice(start, end);
+            
+            const html = batch.map((c, idx) => {
+                const i = start + idx; // Índice global
+                
                 const risk = riskClass(c.Riesgo);
                 const hasSaved = !!c.savedCoords;
                 const todayPaid = getTodayPayments(c.Teléfono);
@@ -3795,6 +3831,73 @@ _Conserve esta notificación como comprobante_`;
                     </div>
                 </div>`;
             }).join('');
+            
+            container.insertAdjacentHTML('beforeend', html);
+            currentBatch++;
+            
+            // Agregar indicador si hay más clientes por cargar
+            if (currentBatch * BATCH_SIZE < currentClientsList.length) {
+                const remainingCount = currentClientsList.length - (currentBatch * BATCH_SIZE);
+                const indicator = document.getElementById('loadMoreIndicator');
+                if (!indicator) {
+                    container.insertAdjacentHTML('beforeend', `
+                        <div id="loadMoreIndicator" style="text-align:center; padding:20px; color:#999; font-size:0.9rem;">
+                            <i class="fas fa-arrow-down"></i> Haz scroll para ver ${remainingCount} clientes más
+                        </div>
+                    `);
+                } else {
+                    indicator.innerHTML = `<i class="fas fa-arrow-down"></i> Haz scroll para ver ${remainingCount} clientes más`;
+                }
+            } else {
+                // Quitar indicador si ya no hay más
+                const indicator = document.getElementById('loadMoreIndicator');
+                if (indicator) indicator.remove();
+            }
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════════════
+        // INFINITE SCROLL - Carga automática al hacer scroll
+        // ═══════════════════════════════════════════════════════════════════════════
+        
+        function setupInfiniteScroll() {
+            let ticking = false;
+            
+            window.addEventListener('scroll', () => {
+                if (!ticking) {
+                    window.requestAnimationFrame(() => {
+                        const scrollPosition = window.innerHeight + window.scrollY;
+                        const threshold = document.body.offsetHeight - 400;
+                        
+                        if (scrollPosition >= threshold && !isLoadingMore && currentBatch * BATCH_SIZE < currentClientsList.length) {
+                            isLoadingMore = true;
+                            renderBatch();
+                            setTimeout(() => {
+                                isLoadingMore = false;
+                            }, 100);
+                        }
+                        
+                        ticking = false;
+                    });
+                    
+                    ticking = true;
+                }
+            }, { passive: true });
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════════════
+        // DEBOUNCE - Optimización de búsqueda
+        // ═══════════════════════════════════════════════════════════════════════════
+        
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
         }
         
         function toggle(i) { document.getElementById(`body-${i}`).classList.toggle('active'); }
@@ -5684,6 +5787,8 @@ _LeGaXi Asociados_`;
         }, 60000);
         
         console.log('✅ Sistema de Promesas de Pago integrado correctamente');
+        console.log('⚡ Sistema OPTIMIZADO con Lazy Loading activado');
+        console.log(`📊 Renderizando ${BATCH_SIZE} clientes por lote`);
         
     </script>
     
