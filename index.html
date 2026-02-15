@@ -191,15 +191,6 @@
             outline: none;
         }
         .search-box input:focus { border-color: #1F4E79; }
-        // Mostrar promesas activas
-const promesasCliente = getPromesasCliente(c.Teléfono).filter(p => p.estado === 'pendiente');
-const promesasHtml = promesasCliente.length > 0 ? `
-    <div class="promesa-info ${new Date(promesasCliente[0].fecha) < new Date() ? 'promesa-vencida' : ''}">
-        <strong><i class="fas fa-clock"></i> Promesa de pago:</strong><br>
-        $${fmt(promesasCliente[0].monto)} el ${formatDateShort(promesasCliente[0].fecha)}
-        ${promesasCliente[0].nota ? `<br><small>${promesasCliente[0].nota}</small>` : ''}
-    </div>
-` : '';
         
         /* Filtros */
         .filter-section {
@@ -1162,6 +1153,34 @@ const promesasHtml = promesasCliente.length > 0 ? `
             background: #9b59b6;
         }
         
+        /* Estilos para promesas */
+        .promesa-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            margin-left: 5px;
+        }
+        
+        .promesa-info {
+            background: #fff3cd;
+            border-left: 3px solid #f39c12;
+            padding: 8px 10px;
+            margin-top: 8px;
+            border-radius: 0 8px 8px 0;
+            font-size: 0.75rem;
+        }
+        
+        .promesa-vencida {
+            background: #ffebee;
+            border-left-color: #e74c3c;
+        }
+        
         .modal-convenio .modal-header { background: #9b59b6; }
         .convenio-form-section {
             background: #f8f9fa;
@@ -1252,6 +1271,10 @@ const promesasHtml = promesasCliente.length > 0 ? `
         <h1><i class="fas fa-hand-holding-usd"></i> LGX</h1>
         <div style="display:flex;gap:5px;align-items:center;">
             <span id="syncStatus" style="font-size:0.65rem;margin-right:5px;"></span>
+            <button class="header-btn" id="btnPagosHoy" onclick="showPagosHoy()" title="Pagos programados hoy">
+                <i class="fas fa-calendar-check"></i>
+                <span id="badgePagosHoy" style="display:none; background:#e74c3c; border-radius:10px; padding:2px 6px; font-size:0.7rem; margin-left:4px;">0</span>
+            </button>
             <button class="header-btn" onclick="forceSync()" title="Sincronizar">
                 <i class="fas fa-sync-alt"></i>
             </button>
@@ -1462,6 +1485,101 @@ const promesasHtml = promesasCliente.length > 0 ? `
                 <div class="msg-preview" id="msgPreview"></div>
                 <button class="btn-send-wapp" id="btnSendWapp">
                     <i class="fab fa-whatsapp"></i> ENVIAR POR WHATSAPP
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Pagos Hoy / Calendario -->
+    <div class="modal modal-admin" id="pagosHoyModal">
+        <div class="modal-content" style="max-width:500px; max-height:90vh;">
+            <div class="modal-header" style="background:#27AE60;">
+                <h3><i class="fas fa-calendar-check"></i> Cobranza Programada</h3>
+                <button class="modal-close" onclick="closePagosHoy()">&times;</button>
+            </div>
+            <div class="modal-body" style="padding:15px;">
+                
+                <!-- Tabs -->
+                <div class="admin-tabs">
+                    <button class="admin-tab active" onclick="switchPagosTab('hoy')">
+                        <i class="fas fa-today"></i> Hoy
+                    </button>
+                    <button class="admin-tab" onclick="switchPagosTab('semana')">
+                        <i class="fas fa-calendar-week"></i> Semana
+                    </button>
+                    <button class="admin-tab" onclick="switchPagosTab('mes')">
+                        <i class="fas fa-calendar-alt"></i> Mes
+                    </button>
+                </div>
+                
+                <!-- Resumen Superior -->
+                <div style="background:linear-gradient(135deg,#27AE60,#2ECC71); color:white; border-radius:12px; padding:15px; margin-bottom:15px;">
+                    <div style="text-align:center;">
+                        <div style="font-size:0.8rem; opacity:0.9; margin-bottom:5px;" id="periodoActual">HOY</div>
+                        <div style="font-size:2rem; font-weight:700;" id="montoEsperado">$0</div>
+                        <div style="font-size:0.75rem; opacity:0.8;">Esperado en cobranza</div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; font-size:0.85rem;">
+                        <div style="text-align:center;">
+                            <div style="opacity:0.8;">Clientes</div>
+                            <div style="font-weight:700; font-size:1.1rem;" id="numClientesEsperados">0</div>
+                        </div>
+                        <div style="text-align:center;">
+                            <div style="opacity:0.8;">Pago Promedio</div>
+                            <div style="font-weight:700; font-size:1.1rem;" id="promedioEsperado">$0</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Panel HOY -->
+                <div class="admin-panel active" id="panelPagosHoy">
+                    <div id="listaPagosHoy" style="max-height:400px; overflow-y:auto;"></div>
+                </div>
+                
+                <!-- Panel SEMANA -->
+                <div class="admin-panel" id="panelPagosSemana">
+                    <div id="calendarioSemana"></div>
+                </div>
+                
+                <!-- Panel MES -->
+                <div class="admin-panel" id="panelPagosMes">
+                    <div id="calendarioMes"></div>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Registrar Promesa -->
+    <div class="modal" id="promesaModal">
+        <div class="modal-content" style="max-width:400px;">
+            <div class="modal-header" style="background:#9b59b6;">
+                <h3><i class="fas fa-handshake"></i> Registrar Promesa de Pago</h3>
+                <button class="modal-close" onclick="closePromesa()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-client">
+                    <div class="modal-client-name" id="promesaClientName"></div>
+                    <div class="modal-client-debt">Saldo: <span id="promesaClientDebt"></span></div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Fecha prometida *</label>
+                    <input type="date" id="promesaFecha">
+                </div>
+                
+                <div class="form-group">
+                    <label>Monto prometido *</label>
+                    <input type="number" id="promesaMonto" placeholder="0.00" inputmode="decimal">
+                </div>
+                
+                <div class="form-group">
+                    <label>Notas (opcional)</label>
+                    <textarea id="promesaNota" rows="2" placeholder="Ej: Dice que le pagan el viernes..." style="width:100%; padding:10px; border:2px solid #ddd; border-radius:8px; font-size:0.9rem;"></textarea>
+                </div>
+                
+                <button onclick="guardarPromesa()" style="width:100%; padding:14px; background:#9b59b6; color:white; border:none; border-radius:10px; font-size:1rem; font-weight:600; cursor:pointer;">
+                    <i class="fas fa-check"></i> REGISTRAR PROMESA
                 </button>
             </div>
         </div>
@@ -1803,6 +1921,7 @@ const promesasHtml = promesasCliente.length > 0 ? `
         let payments = JSON.parse(localStorage.getItem('clientPayments') || '{}');
         let saldoAjustes = JSON.parse(localStorage.getItem('saldoAjustes') || '{}');
         let convenios = JSON.parse(localStorage.getItem('clientConvenios') || '{}');
+        let promesas = JSON.parse(localStorage.getItem('promesasPago') || '{}');
         let lastCapturista = localStorage.getItem('lastCapturista') || '';
         let customClients = JSON.parse(localStorage.getItem('customClients') || '[]');
         let deletedPhones = JSON.parse(localStorage.getItem('deletedPhones') || '[]');
@@ -2503,7 +2622,7 @@ Costas Procesales: *A determinar*
 ✗ Solicitud de embargo precautorio
 ✗ Investigación patrimonial autorizada
 ✗ Notificación a Buró de Crédito (cuenta irrecuperable)
-
+✗ Denuncia ante CONDUSEF por incumplimiento
 
 *MEDIDAS CAUTELARES SOLICITADAS:*
 • Aseguramiento de cuentas bancarias
@@ -2538,7 +2657,7 @@ La demanda procederá automáticamente si no se recibe contacto verificable dent
 
 → Arts. 1391-1414 Código de Comercio
 → Arts. 2104-2118 Código Civil Federal  
-
+→ Art. 387 Fracción XVI Código Penal Federal
 → Ley Federal de Protección al Consumidor
 → Circular Única de Bancos - Art. 303
 
@@ -3546,6 +3665,32 @@ _Conserve esta notificación como comprobante_`;
                         `).join('')}
                        </div>` : '';
                 
+                // Mostrar promesas activas del cliente
+                const getPromesasCliente = (phone) => {
+                    const cleanP = String(phone || '').replace(/[^0-9]/g, '');
+                    for (let tel in promesas) {
+                        const cleanT = String(tel || '').replace(/[^0-9]/g, '');
+                        if (cleanP === cleanT || (cleanP.length >= 10 && cleanT.length >= 10 && cleanP.slice(-10) === cleanT.slice(-10))) {
+                            return promesas[tel] || [];
+                        }
+                    }
+                    return [];
+                };
+                
+                const promesasCliente = getPromesasCliente(c.Teléfono).filter(p => p.estado === 'pendiente');
+                const promesasIncumplidas = getPromesasCliente(c.Teléfono).filter(p => p.estado === 'incumplida').length;
+                
+                const promesasHtml = promesasCliente.length > 0 ? `
+                    <div class="promesa-info ${new Date(promesasCliente[0].fecha) < new Date() ? 'promesa-vencida' : ''}">
+                        <strong><i class="fas fa-clock"></i> Promesa de pago:</strong><br>
+                        $${fmt(promesasCliente[0].monto)} el ${new Date(promesasCliente[0].fecha + 'T00:00:00').toLocaleDateString('es-MX', {day:'numeric', month:'short'})}
+                        ${promesasCliente[0].nota ? `<br><small style="color:#666;">${promesasCliente[0].nota}</small>` : ''}
+                        ${promesasCliente.length > 1 ? `<br><small style="color:#666;">+${promesasCliente.length - 1} promesas más</small>` : ''}
+                    </div>
+                ` : '';
+                
+                const promesaBadgeHtml = promesasCliente.length > 0 ? `<span class="promesa-badge"><i class="fas fa-clock"></i> ${promesasCliente.length}</span>` : '';
+                
                 const clientName = String(c.Cliente || '').split(' ')[0] || 'Cliente';
                 const msgSimple = isLiquidado 
                     ? `Hola ${clientName}, ¡su cuenta está liquidada! Gracias. LMV CREDIA`
@@ -3567,7 +3712,7 @@ _Conserve esta notificación como comprobante_`;
                 <div class="client-card ${isLiquidado ? 'liquidado' : ''}">
                     <div class="card-header ${risk}" onclick="toggle(${i})">
                         <div class="client-row1">
-                            <div class="client-name"><span style="color:#888;font-size:0.7rem;margin-right:5px;">${c.Folio}</span>${c.Cliente} ${convenioBadgeHtml}</div>
+                            <div class="client-name"><span style="color:#888;font-size:0.7rem;margin-right:5px;">${c.Folio}</span>${c.Cliente} ${convenioBadgeHtml}${promesaBadgeHtml}</div>
                             <div class="client-amount ${isLiquidado ? 'liquidado' : ''}">
                                 ${isLiquidado ? '✓ $0' : '$' + fmt(c.Saldo)}
                             </div>
@@ -3628,12 +3773,12 @@ _Conserve esta notificación como comprobante_`;
                             </button>
                         </div>
                         <div class="action-grid-2" style="margin-top:8px;">
-    ${convenioBtnHtml}
-    ${!isLiquidado ? `
-    <button class="act-btn" onclick="event.stopPropagation(); openPromesa('${c.Teléfono}', '${esc(c.Cliente)}', ${c.Saldo})" style="background:#9b59b6; color:white;">
-        <i class="fas fa-clock"></i> Promesa
-    </button>` : ''}
-</div>
+                            ${convenioBtnHtml}
+                            ${!isLiquidado ? `
+                            <button class="act-btn" onclick="event.stopPropagation(); openPromesa('${c.Teléfono}', '${esc(c.Cliente)}', ${c.Saldo})" style="background:#f39c12; color:white;">
+                                <i class="fas fa-clock"></i> Promesa ${promesasIncumplidas > 0 ? `<span style="background:#e74c3c; padding:2px 6px; border-radius:8px; font-size:0.65rem; margin-left:4px;">${promesasIncumplidas}</span>` : ''}
+                            </button>` : ''}
+                        </div>
                     </div>
                 </div>`;
             }).join('');
@@ -5011,7 +5156,10 @@ _LeGaXi Asociados_`;
         // Verificar sesión al cargar
         verificarSesion();
     </script>
-    </div><!-- Cierre de app-content -->
+    
+    <!-- Sistema de Promesas de Pago -->
     <script src="sistema_promesas_pagos.js"></script>
+    
+    </div><!-- Cierre de app-content -->
 </body>
 </html>
