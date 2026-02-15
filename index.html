@@ -1431,6 +1431,25 @@
                     <div class="modal-client-name" id="wappClientName"></div>
                     <div class="modal-client-debt" id="wappClientInfo"></div>
                 </div>
+                
+                <!-- Selector de modo -->
+                <div style="background:#f8f9fa; padding:12px; border-radius:8px; margin-bottom:12px;">
+                    <div style="font-size:0.85rem; color:#666; margin-bottom:8px;">
+                        <i class="fas fa-shield-alt"></i> <strong>Modo de envío:</strong>
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                        <button class="filter-btn active" id="btnModoImagen" onclick="cambiarModoEnvio('imagen')" style="flex:1;">
+                            <i class="fas fa-image"></i> Imagen (Recomendado)
+                        </button>
+                        <button class="filter-btn" id="btnModoTexto" onclick="cambiarModoEnvio('texto')" style="flex:1;">
+                            <i class="fas fa-font"></i> Texto
+                        </button>
+                    </div>
+                    <div style="font-size:0.7rem; color:#999; margin-top:6px;">
+                        💡 Modo imagen evita detección automática de WhatsApp
+                    </div>
+                </div>
+                
                 <div class="msg-preview" id="msgPreview"></div>
                 <button class="btn-send-wapp" id="btnSendWapp">
                     <i class="fab fa-whatsapp"></i> ENVIAR POR WHATSAPP
@@ -2475,7 +2494,7 @@ Costas Procesales: *A determinar*
 ✗ Solicitud de embargo precautorio
 ✗ Investigación patrimonial autorizada
 ✗ Notificación a Buró de Crédito (cuenta irrecuperable)
-
+✗ Denuncia ante CONDUSEF por incumplimiento
 
 *MEDIDAS CAUTELARES SOLICITADAS:*
 • Aseguramiento de cuentas bancarias
@@ -2510,7 +2529,7 @@ La demanda procederá automáticamente si no se recibe contacto verificable dent
 
 → Arts. 1391-1414 Código de Comercio
 → Arts. 2104-2118 Código Civil Federal  
-
+→ Art. 387 Fracción XVI Código Penal Federal
 → Ley Federal de Protección al Consumidor
 → Circular Única de Bancos - Art. 303
 
@@ -2528,7 +2547,126 @@ _y perjuicios que cause" - Art. 2104 CCF_
 _Conserve esta notificación como comprobante_`;
         }
         
-        function openWappModal(phone, name, saldo, dias) {
+        // ===== CONVERTIR MENSAJE A IMAGEN =====
+        async function textoAImagen(texto) {
+            return new Promise((resolve) => {
+                // Crear canvas
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // Configuración
+                const padding = 40;
+                const lineHeight = 32;
+                const maxWidth = 800;
+                const fontSize = 22;
+                
+                // Configurar fuente
+                ctx.font = `${fontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif`;
+                
+                // Procesar texto línea por línea
+                const lineas = texto.split('\n');
+                const lineasProcesadas = [];
+                
+                lineas.forEach(linea => {
+                    if (linea.trim() === '') {
+                        lineasProcesadas.push('');
+                        return;
+                    }
+                    
+                    // Dividir línea si es muy larga
+                    const palabras = linea.split(' ');
+                    let lineaActual = '';
+                    
+                    palabras.forEach(palabra => {
+                        const prueba = lineaActual + (lineaActual ? ' ' : '') + palabra;
+                        const medida = ctx.measureText(prueba);
+                        
+                        if (medida.width > maxWidth - padding * 2) {
+                            if (lineaActual) lineasProcesadas.push(lineaActual);
+                            lineaActual = palabra;
+                        } else {
+                            lineaActual = prueba;
+                        }
+                    });
+                    
+                    if (lineaActual) lineasProcesadas.push(lineaActual);
+                });
+                
+                // Ajustar tamaño del canvas
+                canvas.width = maxWidth;
+                canvas.height = (lineasProcesadas.length * lineHeight) + (padding * 2);
+                
+                // Fondo blanco
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Borde
+                ctx.strokeStyle = '#1F4E79';
+                ctx.lineWidth = 6;
+                ctx.strokeRect(0, 0, canvas.width, canvas.height);
+                
+                // Re-configurar fuente después de cambiar tamaño
+                ctx.font = `${fontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif`;
+                ctx.textBaseline = 'top';
+                
+                // Dibujar texto
+                let y = padding;
+                lineasProcesadas.forEach(linea => {
+                    // Detectar estilos
+                    let esTitulo = linea.includes('*') && linea.indexOf('*') < 3;
+                    let esImportante = linea.includes('🚨') || linea.includes('🔴') || linea.includes('⚠️');
+                    
+                    // Quitar asteriscos de markdown
+                    let textoLimpio = linea.replace(/\*/g, '');
+                    
+                    // Color y estilo
+                    if (esTitulo || esImportante) {
+                        ctx.fillStyle = '#C00000';
+                        ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif`;
+                    } else if (linea.startsWith('_')) {
+                        ctx.fillStyle = '#666666';
+                        ctx.font = `italic ${fontSize - 2}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif`;
+                        textoLimpio = textoLimpio.replace(/_/g, '');
+                    } else if (linea.includes('→') || linea.includes('•') || linea.includes('✗') || linea.includes('✓')) {
+                        ctx.fillStyle = '#1F4E79';
+                        ctx.font = `${fontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif`;
+                    } else {
+                        ctx.fillStyle = '#333333';
+                        ctx.font = `${fontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif`;
+                    }
+                    
+                    ctx.fillText(textoLimpio, padding, y);
+                    y += lineHeight;
+                });
+                
+                // Convertir a blob
+                canvas.toBlob((blob) => {
+                    resolve(blob);
+                }, 'image/png');
+            });
+        }
+        
+        // Variable global para guardar la imagen y el modo
+        let imagenMensajeActual = null;
+        let modoEnvioActual = 'imagen'; // 'imagen' o 'texto'
+        
+        function cambiarModoEnvio(modo) {
+            modoEnvioActual = modo;
+            
+            // Actualizar botones
+            document.getElementById('btnModoImagen').classList.toggle('active', modo === 'imagen');
+            document.getElementById('btnModoTexto').classList.toggle('active', modo === 'texto');
+            
+            // Actualizar texto del botón de envío
+            const btnSend = document.getElementById('btnSendWapp');
+            if (modo === 'imagen') {
+                btnSend.innerHTML = '<i class="fas fa-image"></i> DESCARGAR IMAGEN Y ABRIR WHATSAPP';
+            } else {
+                btnSend.innerHTML = '<i class="fab fa-whatsapp"></i> ENVIAR TEXTO POR WHATSAPP';
+            }
+        }
+        
+        async function openWappModal(phone, name, saldo, dias) {
             // Buscar cliente por múltiples formas (teléfono, id, o folio)
             const cleanPhone = String(phone || '').replace(/[^0-9]/g, '');
             const cliente = processedClients.find(c => {
@@ -2554,27 +2692,64 @@ _Conserve esta notificación como comprobante_`;
             const mensaje = getMensajeLegal(cliente);
             document.getElementById('msgPreview').textContent = mensaje;
             
+            // Convertir mensaje a imagen (en background)
+            showLoader('Generando imagen del mensaje...');
+            imagenMensajeActual = await textoAImagen(mensaje);
+            hideLoader();
+            
             // Obtener teléfono limpio
             const phoneClean = String(cliente.Teléfono || '').replace(/[^0-9]/g, '');
+            
+            // Resetear modo a imagen por defecto
+            modoEnvioActual = 'imagen';
+            document.getElementById('btnModoImagen').classList.add('active');
+            document.getElementById('btnModoTexto').classList.remove('active');
+            document.getElementById('btnSendWapp').innerHTML = '<i class="fas fa-image"></i> DESCARGAR IMAGEN Y ABRIR WHATSAPP';
             
             if (phoneClean.length < 10) {
                 document.getElementById('msgPreview').textContent = '⚠️ Este cliente no tiene teléfono válido.\n\n' + mensaje;
                 document.getElementById('btnSendWapp').onclick = function() {
-                    // Copiar mensaje al portapapeles
-                    navigator.clipboard.writeText(mensaje).then(() => {
-                        showToast('📋 Mensaje copiado - Cliente sin teléfono válido');
-                    });
+                    if (modoEnvioActual === 'imagen') {
+                        descargarImagen(imagenMensajeActual, `notificacion_${cliente.Cliente || 'cliente'}.png`);
+                        showToast('📥 Imagen descargada - Cliente sin teléfono válido');
+                    } else {
+                        navigator.clipboard.writeText(mensaje).then(() => {
+                            showToast('📋 Mensaje copiado - Cliente sin teléfono válido');
+                        });
+                    }
                     closeWappModal();
                 };
             } else {
                 const phoneToUse = phoneClean.startsWith('52') ? phoneClean : '52' + phoneClean;
                 document.getElementById('btnSendWapp').onclick = function() {
-                    window.open(`https://wa.me/${phoneToUse}?text=${encodeURIComponent(mensaje)}`, '_blank');
+                    if (modoEnvioActual === 'imagen') {
+                        // MODO IMAGEN: Descargar imagen y abrir WhatsApp vacío
+                        descargarImagen(imagenMensajeActual, `notificacion_${cliente.Cliente || 'cliente'}.png`);
+                        setTimeout(() => {
+                            window.open(`https://wa.me/${phoneToUse}`, '_blank');
+                            showToast('📱 Imagen descargada. Adjúntala manualmente en WhatsApp');
+                        }, 500);
+                    } else {
+                        // MODO TEXTO: Enviar texto directamente
+                        window.open(`https://wa.me/${phoneToUse}?text=${encodeURIComponent(mensaje)}`, '_blank');
+                        showToast('⚠️ Texto enviado. Mayor riesgo de detección');
+                    }
                     closeWappModal();
                 };
             }
             
             document.getElementById('wappModal').classList.add('active');
+        }
+        
+        function descargarImagen(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
         
         function closeWappModal() {
