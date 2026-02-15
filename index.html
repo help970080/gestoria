@@ -4,7 +4,43 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>LeGaXi Asociados Cobranza</title>
-    <link rel="stylesheet" href="https://script.google.com/macros/s/AKfycbw4czhOikZJzOwxgFvPt8rE6z5PHw9PKg8LhvKzAADyWK0qoQrPBnANC-sodoZ8A62N/exec">
+    
+    <!-- Font Awesome con fallback -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="stylesheet" href="https://script.google.com/macros/s/AKfycbw4czhOikZJzOwxgFvPt8rE6z5PHw9PKg8LhvKzAADyWK0qoQrPBnANC-sodoZ8A62N/exec" crossorigin="anonymous">
+    
+    <!-- Fallback si Font Awesome no carga -->
+    <script>
+        setTimeout(() => {
+            const test = document.createElement('i');
+            test.className = 'fas fa-check';
+            test.style.cssText = 'position:absolute;left:-9999px;';
+            document.body.appendChild(test);
+            const loaded = window.getComputedStyle(test).fontFamily.includes('Font Awesome');
+            document.body.removeChild(test);
+            
+            if (!loaded) {
+                console.warn('Font Awesome no cargó, usando fallback');
+                // Agregar estilos de texto como fallback
+                const style = document.createElement('style');
+                style.textContent = `
+                    .fas, .fab { font-style: normal !important; }
+                    .fa-sync-alt::before { content: '🔄 '; }
+                    .fa-calendar-check::before { content: '📅 '; }
+                    .fa-cog::before { content: '⚙️ '; }
+                    .fa-chart-line::before { content: '📊 '; }
+                    .fa-sign-out-alt::before { content: '🚪 '; }
+                    .fa-phone::before { content: '📞 '; }
+                    .fa-whatsapp::before { content: '💬 '; }
+                    .fa-dollar-sign::before { content: '💰 '; }
+                    .fa-plus::before { content: '➕ '; }
+                    .fa-arrow-down::before { content: '⬇️ '; }
+                `;
+                document.head.appendChild(style);
+            }
+        }, 2000);
+    </script>
+    
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -3841,12 +3877,24 @@ _Conserve esta notificación como comprobante_`;
                 const indicator = document.getElementById('loadMoreIndicator');
                 if (!indicator) {
                     container.insertAdjacentHTML('beforeend', `
-                        <div id="loadMoreIndicator" style="text-align:center; padding:20px; color:#999; font-size:0.9rem;">
-                            <i class="fas fa-arrow-down"></i> Haz scroll para ver ${remainingCount} clientes más
+                        <div id="loadMoreIndicator" style="text-align:center; padding:20px;">
+                            <div style="color:#999; font-size:0.9rem; margin-bottom:10px;">
+                                <i class="fas fa-arrow-down"></i> ${remainingCount} clientes más
+                            </div>
+                            <button onclick="loadMoreManual()" style="padding:12px 24px; background:#27AE60; color:white; border:none; border-radius:8px; font-size:0.9rem; font-weight:600; cursor:pointer;">
+                                <i class="fas fa-plus"></i> Cargar 30 más
+                            </button>
                         </div>
                     `);
                 } else {
-                    indicator.innerHTML = `<i class="fas fa-arrow-down"></i> Haz scroll para ver ${remainingCount} clientes más`;
+                    indicator.innerHTML = `
+                        <div style="color:#999; font-size:0.9rem; margin-bottom:10px;">
+                            <i class="fas fa-arrow-down"></i> ${remainingCount} clientes más
+                        </div>
+                        <button onclick="loadMoreManual()" style="padding:12px 24px; background:#27AE60; color:white; border:none; border-radius:8px; font-size:0.9rem; font-weight:600; cursor:pointer;">
+                            <i class="fas fa-plus"></i> Cargar 30 más
+                        </button>
+                    `;
                 }
             } else {
                 // Quitar indicador si ya no hay más
@@ -3862,11 +3910,16 @@ _Conserve esta notificación como comprobante_`;
         function setupInfiniteScroll() {
             let ticking = false;
             
-            window.addEventListener('scroll', () => {
+            const checkScroll = () => {
                 if (!ticking) {
                     window.requestAnimationFrame(() => {
-                        const scrollPosition = window.innerHeight + window.scrollY;
-                        const threshold = document.body.offsetHeight - 400;
+                        // Compatibilidad con todos los navegadores
+                        const scrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+                        const scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
+                        const clientHeight = window.innerHeight || document.documentElement.clientHeight;
+                        
+                        const scrollPosition = scrollTop + clientHeight;
+                        const threshold = scrollHeight - 500; // 500px antes del final
                         
                         if (scrollPosition >= threshold && !isLoadingMore && currentBatch * BATCH_SIZE < currentClientsList.length) {
                             isLoadingMore = true;
@@ -3881,7 +3934,19 @@ _Conserve esta notificación como comprobante_`;
                     
                     ticking = true;
                 }
-            }, { passive: true });
+            };
+            
+            // Escuchar tanto scroll como wheel (para laptop)
+            window.addEventListener('scroll', checkScroll, { passive: true });
+            window.addEventListener('wheel', checkScroll, { passive: true });
+            document.addEventListener('scroll', checkScroll, { passive: true });
+        }
+        
+        // Botón manual de cargar más (respaldo)
+        function loadMoreManual() {
+            if (currentBatch * BATCH_SIZE < currentClientsList.length) {
+                renderBatch();
+            }
         }
         
         // ═══════════════════════════════════════════════════════════════════════════
