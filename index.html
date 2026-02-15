@@ -3874,32 +3874,39 @@ _Conserve esta notificación como comprobante_`;
             // Agregar indicador si hay más clientes por cargar
             if (currentBatch * BATCH_SIZE < currentClientsList.length) {
                 const remainingCount = currentClientsList.length - (currentBatch * BATCH_SIZE);
-                const indicator = document.getElementById('loadMoreIndicator');
+                let indicator = document.getElementById('loadMoreIndicator');
+                
+                const indicatorHTML = `
+                    <div style="color:#999; font-size:0.9rem; margin-bottom:10px;">
+                        <i class="fas fa-arrow-down"></i> ${remainingCount} clientes más
+                    </div>
+                    <button onclick="loadMoreManual()" style="padding:12px 24px; background:#27AE60; color:white; border:none; border-radius:8px; font-size:0.9rem; font-weight:600; cursor:pointer;">
+                        <i class="fas fa-plus"></i> Cargar 30 más
+                    </button>
+                `;
+                
                 if (!indicator) {
                     container.insertAdjacentHTML('beforeend', `
                         <div id="loadMoreIndicator" style="text-align:center; padding:20px;">
-                            <div style="color:#999; font-size:0.9rem; margin-bottom:10px;">
-                                <i class="fas fa-arrow-down"></i> ${remainingCount} clientes más
-                            </div>
-                            <button onclick="loadMoreManual()" style="padding:12px 24px; background:#27AE60; color:white; border:none; border-radius:8px; font-size:0.9rem; font-weight:600; cursor:pointer;">
-                                <i class="fas fa-plus"></i> Cargar 30 más
-                            </button>
+                            ${indicatorHTML}
                         </div>
                     `);
                 } else {
-                    indicator.innerHTML = `
-                        <div style="color:#999; font-size:0.9rem; margin-bottom:10px;">
-                            <i class="fas fa-arrow-down"></i> ${remainingCount} clientes más
-                        </div>
-                        <button onclick="loadMoreManual()" style="padding:12px 24px; background:#27AE60; color:white; border:none; border-radius:8px; font-size:0.9rem; font-weight:600; cursor:pointer;">
-                            <i class="fas fa-plus"></i> Cargar 30 más
-                        </button>
-                    `;
+                    indicator.innerHTML = indicatorHTML;
                 }
             } else {
                 // Quitar indicador si ya no hay más
                 const indicator = document.getElementById('loadMoreIndicator');
-                if (indicator) indicator.remove();
+                if (indicator) {
+                    indicator.innerHTML = `
+                        <div style="text-align:center; padding:20px; color:#27AE60; font-weight:600;">
+                            ✓ Todos los clientes cargados (${currentClientsList.length})
+                        </div>
+                    `;
+                    setTimeout(() => {
+                        if (indicator) indicator.remove();
+                    }, 3000);
+                }
             }
         }
         
@@ -3945,7 +3952,14 @@ _Conserve esta notificación como comprobante_`;
         // Botón manual de cargar más (respaldo)
         function loadMoreManual() {
             if (currentBatch * BATCH_SIZE < currentClientsList.length) {
+                // Remover el indicador actual antes de renderizar
+                const indicator = document.getElementById('loadMoreIndicator');
+                if (indicator) indicator.remove();
+                
+                // Renderizar siguiente batch
                 renderBatch();
+                
+                console.log(`Cargados: ${currentBatch * BATCH_SIZE} de ${currentClientsList.length}`);
             }
         }
         
