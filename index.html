@@ -191,6 +191,15 @@
             outline: none;
         }
         .search-box input:focus { border-color: #1F4E79; }
+        // Mostrar promesas activas
+const promesasCliente = getPromesasCliente(c.Teléfono).filter(p => p.estado === 'pendiente');
+const promesasHtml = promesasCliente.length > 0 ? `
+    <div class="promesa-info ${new Date(promesasCliente[0].fecha) < new Date() ? 'promesa-vencida' : ''}">
+        <strong><i class="fas fa-clock"></i> Promesa de pago:</strong><br>
+        $${fmt(promesasCliente[0].monto)} el ${formatDateShort(promesasCliente[0].fecha)}
+        ${promesasCliente[0].nota ? `<br><small>${promesasCliente[0].nota}</small>` : ''}
+    </div>
+` : '';
         
         /* Filtros */
         .filter-section {
@@ -3590,6 +3599,7 @@ _Conserve esta notificación como comprobante_`;
                         </div>
                         ${saldoInfoHtml}
                         ${convenioCardHtml}
+                        ${promesasHtml}
                         ${paymentsHtml}
                         <div class="action-grid">
                             <a href="tel:${c.Teléfono}" class="act-btn btn-call" ${!hasValidPhone ? 'style="opacity:0.5;pointer-events:none;"' : ''}>
@@ -3618,8 +3628,12 @@ _Conserve esta notificación como comprobante_`;
                             </button>
                         </div>
                         <div class="action-grid-2" style="margin-top:8px;">
-                            ${convenioBtnHtml}
-                        </div>
+    ${convenioBtnHtml}
+    ${!isLiquidado ? `
+    <button class="act-btn" onclick="event.stopPropagation(); openPromesa('${c.Teléfono}', '${esc(c.Cliente)}', ${c.Saldo})" style="background:#9b59b6; color:white;">
+        <i class="fas fa-clock"></i> Promesa
+    </button>` : ''}
+</div>
                     </div>
                 </div>`;
             }).join('');
@@ -4998,5 +5012,7 @@ _LeGaXi Asociados_`;
         verificarSesion();
     </script>
     </div><!-- Cierre de app-content -->
+    <script src="sistema_promesas_pagos.js"></script>
+</body>
 </body>
 </html>
