@@ -2075,6 +2075,9 @@
                 
                 console.log('Convenios cargados:', Object.keys(convenios).length);
                 
+                // Convertir convenios activos en promesas automáticamente
+                convertirConveniosAPromesas();
+                
                 // Guardar localmente como backup
                 localStorage.setItem('clientPayments', JSON.stringify(payments));
                 localStorage.setItem('saldoAjustes', JSON.stringify(saldoAjustes));
@@ -5167,6 +5170,87 @@ _LeGaXi Asociados_`;
         // FUNCIONES DE PROMESAS
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         
+        // Convertir convenios activos en promesas automáticamente
+        function convertirConveniosAPromesas() {
+            let promesasGeneradas = 0;
+            const hoy = new Date();
+            
+            for (let telefono in convenios) {
+                const conv = convenios[telefono];
+                
+                // Solo procesar convenios activos con estructura válida
+                if (!conv || conv.estado !== 'activo' || !conv.fechaInicio || !conv.pagoSemanal) {
+                    continue;
+                }
+                
+                // Normalizar teléfono
+                const telLimpio = String(telefono).replace(/[^0-9]/g, '');
+                if (telLimpio.length < 10) continue;
+                
+                // Determinar frecuencia en días
+                let diasFrecuencia = 7; // Por defecto semanal
+                if (conv.frecuencia === 'quincenal') diasFrecuencia = 15;
+                else if (conv.frecuencia === 'mensual') diasFrecuencia = 30;
+                
+                // Calcular fechas de pago futuras
+                const fechaInicio = new Date(conv.fechaInicio);
+                const fechaFin = new Date(conv.fechaFin || conv.fechaTermino);
+                const numPagos = parseInt(conv.numeroPagos || conv.semanas) || 1;
+                const montoPago = parseFloat(conv.pagoSemanal || conv.montoParcial) || 0;
+                
+                // Inicializar array de promesas para este teléfono si no existe
+                if (!promesas[telLimpio]) {
+                    promesas[telLimpio] = [];
+                }
+                
+                // Generar promesas para los próximos pagos (hasta 8 semanas adelante)
+                let fechaPago = new Date(fechaInicio);
+                let pagoNumero = 0;
+                
+                while (pagoNumero < numPagos && fechaPago <= fechaFin) {
+                    // Avanzar a la siguiente fecha de pago
+                    fechaPago = new Date(fechaInicio);
+                    fechaPago.setDate(fechaInicio.getDate() + (pagoNumero * diasFrecuencia));
+                    
+                    // Solo generar promesas para pagos futuros o de hoy en adelante
+                    if (fechaPago >= hoy) {
+                        const fechaStr = fechaPago.toISOString().split('T')[0];
+                        
+                        // Verificar si ya existe esta promesa (evitar duplicados)
+                        const yaExiste = promesas[telLimpio].some(p => 
+                            p.fecha === fechaStr && 
+                            p.monto === montoPago && 
+                            p.esConvenio === true
+                        );
+                        
+                        if (!yaExiste) {
+                            promesas[telLimpio].push({
+                                fecha: fechaStr,
+                                monto: montoPago,
+                                nota: `Convenio ${conv.frecuencia || 'semanal'} - Pago ${pagoNumero + 1}/${numPagos}`,
+                                registrada: new Date().toISOString(),
+                                estado: 'pendiente',
+                                cobrador: 'Sistema',
+                                esConvenio: true,
+                                convenioId: conv.id
+                            });
+                            promesasGeneradas++;
+                        }
+                    }
+                    
+                    pagoNumero++;
+                    
+                    // Limitar a máximo 8 pagos futuros para no llenar demasiado
+                    if (pagoNumero >= 8) break;
+                }
+            }
+            
+            if (promesasGeneradas > 0) {
+                localStorage.setItem('promesasPago', JSON.stringify(promesas));
+                console.log(`✅ ${promesasGeneradas} promesas generadas automáticamente desde convenios`);
+            }
+        }
+        
         function openPromesa(phone, name, saldo) {
             currentPromesaClient = { phone, name, saldo };
             document.getElementById('promesaClientName').textContent = name;
@@ -5311,12 +5395,14 @@ _LeGaXi Asociados_`;
             lista.innerHTML = pagosHoy.map((p, idx) => {
                 const vencido = new Date() > new Date(p.fecha + 'T23:59:59');
                 const promesasIncumplidas = contarPromesasIncumplidas(p.telefono);
+                const esConvenio = p.esConvenio || false;
                 
                 return `
-                    <div style="background:white; border-radius:10px; padding:12px; margin-bottom:8px; border-left:4px solid ${vencido ? '#e74c3c' : '#27AE60'};">
+                    <div style="background:white; border-radius:10px; padding:12px; margin-bottom:8px; border-left:4px solid ${vencido ? '#e74c3c' : (esConvenio ? '#9b59b6' : '#27AE60')};">
                         <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:8px;">
                             <div style="flex:1;">
                                 <div style="font-weight:600; font-size:0.95rem; margin-bottom:3px;">
+                                    ${esConvenio ? '<i class="fas fa-handshake" style="color:#9b59b6; margin-right:4px;"></i>' : ''}
                                     ${p.nombre}
                                     ${promesasIncumplidas > 0 ? `<span style="background:#e74c3c; color:white; padding:2px 6px; border-radius:8px; font-size:0.65rem; margin-left:5px;">⚠ ${promesasIncumplidas} incumplidas</span>` : ''}
                                 </div>
@@ -5324,9 +5410,10 @@ _LeGaXi Asociados_`;
                                     <i class="fas fa-phone"></i> ${fmtPhone(p.telefono)}
                                 </div>
                                 ${p.nota ? `<div style="font-size:0.75rem; color:#1F4E79; margin-top:4px;"><i class="fas fa-sticky-note"></i> ${p.nota}</div>` : ''}
+                                ${esConvenio ? `<div style="font-size:0.7rem; color:#9b59b6; margin-top:4px; font-weight:600;">📋 Pago de Convenio</div>` : ''}
                             </div>
                             <div style="text-align:right;">
-                                <div style="font-size:1.3rem; font-weight:700; color:#27AE60;">$${fmt(p.monto)}</div>
+                                <div style="font-size:1.3rem; font-weight:700; color:${esConvenio ? '#9b59b6' : '#27AE60'};">$${fmt(p.monto)}</div>
                                 <div style="font-size:0.7rem; color:#999;">Saldo: $${fmt(p.saldo)}</div>
                             </div>
                         </div>
@@ -5346,12 +5433,14 @@ _LeGaXi Asociados_`;
         function getPagosPorFecha(fecha) {
             const pagos = [];
             
+            // Buscar en promesas (que ahora incluyen convenios)
             for (let telefono in promesas) {
                 const promesasCliente = promesas[telefono].filter(p => 
                     p.fecha === fecha && p.estado === 'pendiente'
                 );
                 
                 if (promesasCliente.length > 0) {
+                    // Buscar info del cliente
                     const cliente = processedClients.find(c => {
                         const cPhone = String(c.Teléfono || '').replace(/[^0-9]/g, '');
                         const tPhone = String(telefono || '').replace(/[^0-9]/g, '');
@@ -5366,7 +5455,8 @@ _LeGaXi Asociados_`;
                             nota: p.nota,
                             fecha: p.fecha,
                             saldo: cliente ? cliente.Saldo : 0,
-                            diasAtraso: cliente ? cliente['Días Atraso'] : 0
+                            diasAtraso: cliente ? cliente['Días Atraso'] : 0,
+                            esConvenio: p.esConvenio || false
                         });
                     });
                 }
@@ -5580,6 +5670,12 @@ _LeGaXi Asociados_`;
         
         // Verificar promesas vencidas al cargar
         verificarPromesasVencidas();
+        
+        // Convertir convenios en promesas si aún no se ha hecho
+        if (Object.keys(convenios).length > 0) {
+            convertirConveniosAPromesas();
+        }
+        
         actualizarBadgePagosHoy();
         
         // Actualizar badge cada minuto
