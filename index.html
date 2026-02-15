@@ -5155,10 +5155,441 @@ _LeGaXi Asociados_`;
         
         // Verificar sesión al cargar
         verificarSesion();
+        
+        // ═══════════════════════════════════════════════════════════════════════════
+        // SISTEMA DE PROMESAS DE PAGO Y CALENDARIO DE COBRANZA
+        // ═══════════════════════════════════════════════════════════════════════════
+        
+        let currentPromesaClient = null;
+        let pagosHoyCache = null;
+        
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // FUNCIONES DE PROMESAS
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        
+        function openPromesa(phone, name, saldo) {
+            currentPromesaClient = { phone, name, saldo };
+            document.getElementById('promesaClientName').textContent = name;
+            document.getElementById('promesaClientDebt').textContent = '$' + fmt(saldo);
+            
+            document.getElementById('promesaFecha').min = new Date().toISOString().split('T')[0];
+            document.getElementById('promesaFecha').value = '';
+            document.getElementById('promesaMonto').value = '';
+            document.getElementById('promesaNota').value = '';
+            
+            document.getElementById('promesaModal').classList.add('active');
+        }
+        
+        function closePromesa() {
+            document.getElementById('promesaModal').classList.remove('active');
+            currentPromesaClient = null;
+        }
+        
+        function guardarPromesa() {
+            if (!currentPromesaClient) return;
+            
+            const fecha = document.getElementById('promesaFecha').value;
+            const monto = parseFloat(document.getElementById('promesaMonto').value);
+            const nota = document.getElementById('promesaNota').value.trim();
+            
+            if (!fecha) {
+                showToast('❌ Selecciona una fecha');
+                return;
+            }
+            
+            if (!monto || monto <= 0) {
+                showToast('❌ Ingresa un monto válido');
+                return;
+            }
+            
+            if (monto > currentPromesaClient.saldo) {
+                if (!confirm(`El monto ($${fmt(monto)}) excede el saldo ($${fmt(currentPromesaClient.saldo)}). ¿Continuar?`)) {
+                    return;
+                }
+            }
+            
+            const phone = currentPromesaClient.phone;
+            
+            if (!promesas[phone]) {
+                promesas[phone] = [];
+            }
+            
+            const promesa = {
+                fecha: fecha,
+                monto: monto,
+                nota: nota,
+                registrada: new Date().toISOString(),
+                estado: 'pendiente',
+                cobrador: lastCapturista || 'Sistema'
+            };
+            
+            promesas[phone].push(promesa);
+            localStorage.setItem('promesasPago', JSON.stringify(promesas));
+            
+            syncToCloud('registrarPromesa', {
+                telefono: phone,
+                cliente: currentPromesaClient.name,
+                promesa: promesa
+            });
+            
+            showToast(`✅ Promesa registrada: $${fmt(monto)} el ${formatDateShort(fecha)}`);
+            closePromesa();
+            actualizarBadgePagosHoy();
+            
+            // Re-renderizar para mostrar el badge
+            render(filterCurrent());
+        }
+        
+        function contarPromesasIncumplidas(phone) {
+            if (!promesas[phone]) return 0;
+            return promesas[phone].filter(p => p.estado === 'incumplida').length;
+        }
+        
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // DASHBOARD "PAGOS HOY"
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        
+        function showPagosHoy() {
+            actualizarPagosHoy();
+            document.getElementById('pagosHoyModal').classList.add('active');
+        }
+        
+        function closePagosHoy() {
+            document.getElementById('pagosHoyModal').classList.remove('active');
+        }
+        
+        function switchPagosTab(tab) {
+            document.querySelectorAll('#pagosHoyModal .admin-tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            document.querySelectorAll('#pagosHoyModal .admin-panel').forEach(panel => {
+                panel.classList.remove('active');
+            });
+            
+            if (tab === 'hoy') {
+                document.getElementById('panelPagosHoy').classList.add('active');
+                actualizarPagosHoy();
+            } else if (tab === 'semana') {
+                document.getElementById('panelPagosSemana').classList.add('active');
+                actualizarCalendarioSemana();
+            } else if (tab === 'mes') {
+                document.getElementById('panelPagosMes').classList.add('active');
+                actualizarCalendarioMes();
+            }
+        }
+        
+        function actualizarPagosHoy() {
+            const hoy = new Date().toISOString().split('T')[0];
+            const pagosHoy = getPagosPorFecha(hoy);
+            
+            pagosHoyCache = pagosHoy;
+            
+            const totalEsperado = pagosHoy.reduce((sum, p) => sum + p.monto, 0);
+            const numClientes = pagosHoy.length;
+            const promedio = numClientes > 0 ? totalEsperado / numClientes : 0;
+            
+            document.getElementById('periodoActual').textContent = 'HOY';
+            document.getElementById('montoEsperado').textContent = '$' + fmt(totalEsperado);
+            document.getElementById('numClientesEsperados').textContent = numClientes;
+            document.getElementById('promedioEsperado').textContent = '$' + fmt(promedio);
+            
+            const lista = document.getElementById('listaPagosHoy');
+            
+            if (pagosHoy.length === 0) {
+                lista.innerHTML = `
+                    <div style="text-align:center; padding:40px 20px; color:#999;">
+                        <i class="fas fa-calendar-check" style="font-size:3rem; margin-bottom:15px; opacity:0.3;"></i>
+                        <div style="font-size:1.1rem; margin-bottom:5px;">Sin pagos programados hoy</div>
+                        <div style="font-size:0.85rem;">Registra promesas de pago en las fichas de clientes</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            lista.innerHTML = pagosHoy.map((p, idx) => {
+                const vencido = new Date() > new Date(p.fecha + 'T23:59:59');
+                const promesasIncumplidas = contarPromesasIncumplidas(p.telefono);
+                
+                return `
+                    <div style="background:white; border-radius:10px; padding:12px; margin-bottom:8px; border-left:4px solid ${vencido ? '#e74c3c' : '#27AE60'};">
+                        <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:8px;">
+                            <div style="flex:1;">
+                                <div style="font-weight:600; font-size:0.95rem; margin-bottom:3px;">
+                                    ${p.nombre}
+                                    ${promesasIncumplidas > 0 ? `<span style="background:#e74c3c; color:white; padding:2px 6px; border-radius:8px; font-size:0.65rem; margin-left:5px;">⚠ ${promesasIncumplidas} incumplidas</span>` : ''}
+                                </div>
+                                <div style="font-size:0.75rem; color:#666;">
+                                    <i class="fas fa-phone"></i> ${fmtPhone(p.telefono)}
+                                </div>
+                                ${p.nota ? `<div style="font-size:0.75rem; color:#1F4E79; margin-top:4px;"><i class="fas fa-sticky-note"></i> ${p.nota}</div>` : ''}
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:1.3rem; font-weight:700; color:#27AE60;">$${fmt(p.monto)}</div>
+                                <div style="font-size:0.7rem; color:#999;">Saldo: $${fmt(p.saldo)}</div>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:5px; margin-top:8px;">
+                            <button onclick="contactarCliente('${p.telefono}', '${esc(p.nombre)}', ${p.saldo}, ${p.diasAtraso})" style="flex:1; padding:8px; background:#25D366; color:white; border:none; border-radius:6px; font-size:0.75rem; font-weight:600; cursor:pointer;">
+                                <i class="fab fa-whatsapp"></i> Contactar
+                            </button>
+                            <button onclick="marcarPromesaCumplidaHoy('${p.telefono}', ${idx})" style="flex:1; padding:8px; background:#3498db; color:white; border:none; border-radius:6px; font-size:0.75rem; font-weight:600; cursor:pointer;">
+                                <i class="fas fa-check"></i> Cumplió
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function getPagosPorFecha(fecha) {
+            const pagos = [];
+            
+            for (let telefono in promesas) {
+                const promesasCliente = promesas[telefono].filter(p => 
+                    p.fecha === fecha && p.estado === 'pendiente'
+                );
+                
+                if (promesasCliente.length > 0) {
+                    const cliente = processedClients.find(c => {
+                        const cPhone = String(c.Teléfono || '').replace(/[^0-9]/g, '');
+                        const tPhone = String(telefono || '').replace(/[^0-9]/g, '');
+                        return cPhone === tPhone || (cPhone.length >= 10 && tPhone.length >= 10 && cPhone.slice(-10) === tPhone.slice(-10));
+                    });
+                    
+                    promesasCliente.forEach(p => {
+                        pagos.push({
+                            telefono: telefono,
+                            nombre: cliente ? cliente.Cliente : 'Cliente',
+                            monto: p.monto,
+                            nota: p.nota,
+                            fecha: p.fecha,
+                            saldo: cliente ? cliente.Saldo : 0,
+                            diasAtraso: cliente ? cliente['Días Atraso'] : 0
+                        });
+                    });
+                }
+            }
+            
+            return pagos;
+        }
+        
+        function marcarPromesaCumplidaHoy(telefono, index) {
+            if (!pagosHoyCache || !pagosHoyCache[index]) return;
+            
+            const pago = pagosHoyCache[index];
+            const cliente = processedClients.find(c => {
+                const cPhone = String(c.Teléfono || '').replace(/[^0-9]/g, '');
+                const tPhone = String(telefono || '').replace(/[^0-9]/g, '');
+                return cPhone === tPhone || (cPhone.length >= 10 && tPhone.length >= 10 && cPhone.slice(-10) === tPhone.slice(-10));
+            });
+            
+            if (cliente) {
+                openPayModal(cliente.id || cliente.Teléfono, cliente.Teléfono, cliente.Cliente, cliente.Saldo, cliente.SaldoOriginal, cliente.Tarifa);
+                document.getElementById('payAmount').value = pago.monto;
+                
+                // Marcar promesa como cumplida
+                if (promesas[telefono]) {
+                    const promesaIndex = promesas[telefono].findIndex(p => 
+                        p.fecha === pago.fecha && p.monto === pago.monto && p.estado === 'pendiente'
+                    );
+                    
+                    if (promesaIndex >= 0) {
+                        promesas[telefono][promesaIndex].estado = 'cumplida';
+                        promesas[telefono][promesaIndex].fechaCumplida = new Date().toISOString();
+                        localStorage.setItem('promesasPago', JSON.stringify(promesas));
+                    }
+                }
+            }
+            
+            closePagosHoy();
+        }
+        
+        function contactarCliente(telefono, nombre, saldo, diasAtraso) {
+            openWappModal(telefono, nombre, saldo, diasAtraso);
+            closePagosHoy();
+        }
+        
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // CALENDARIO SEMANAL
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        
+        function actualizarCalendarioSemana() {
+            const calendario = document.getElementById('calendarioSemana');
+            const hoy = new Date();
+            const lunes = new Date(hoy);
+            lunes.setDate(hoy.getDate() - hoy.getDay() + 1);
+            
+            let html = '<div style="margin-bottom:15px; text-align:center; font-weight:600; color:#27AE60;">Semana del ' + formatDateShort(lunes.toISOString().split('T')[0]) + '</div>';
+            let totalSemana = 0;
+            
+            for (let i = 0; i < 7; i++) {
+                const dia = new Date(lunes);
+                dia.setDate(lunes.getDate() + i);
+                const fechaStr = dia.toISOString().split('T')[0];
+                const pagos = getPagosPorFecha(fechaStr);
+                const total = pagos.reduce((sum, p) => sum + p.monto, 0);
+                totalSemana += total;
+                
+                const esHoy = fechaStr === hoy.toISOString().split('T')[0];
+                const nombreDia = dia.toLocaleDateString('es-MX', { weekday: 'short' }).toUpperCase();
+                const numDia = dia.getDate();
+                
+                html += `
+                    <div style="background:${esHoy ? '#e8f5e9' : 'white'}; border-radius:10px; padding:12px; margin-bottom:8px; border-left:4px solid ${esHoy ? '#27AE60' : '#ddd'};">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <div style="font-weight:600; color:${esHoy ? '#27AE60' : '#333'};">${nombreDia} ${numDia}</div>
+                                <div style="font-size:0.75rem; color:#666;">${pagos.length} pagos</div>
+                            </div>
+                            <div style="font-size:1.2rem; font-weight:700; color:#27AE60;">$${fmt(total)}</div>
+                        </div>
+                        ${pagos.length > 0 ? `
+                            <div style="margin-top:8px; font-size:0.7rem; color:#666;">
+                                ${pagos.slice(0, 3).map(p => `• ${p.nombre.split(' ')[0]} $${fmt(p.monto)}`).join('<br>')}
+                                ${pagos.length > 3 ? `<br>• ...y ${pagos.length - 3} más` : ''}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+            
+            html = `
+                <div style="background:linear-gradient(135deg,#27AE60,#2ECC71); color:white; border-radius:12px; padding:15px; margin-bottom:15px; text-align:center;">
+                    <div style="font-size:0.8rem; opacity:0.9;">Total Semana</div>
+                    <div style="font-size:2rem; font-weight:700;">$${fmt(totalSemana)}</div>
+                </div>
+            ` + html;
+            
+            calendario.innerHTML = html;
+            document.getElementById('periodoActual').textContent = 'ESTA SEMANA';
+            document.getElementById('montoEsperado').textContent = '$' + fmt(totalSemana);
+        }
+        
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // CALENDARIO MENSUAL
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        
+        function actualizarCalendarioMes() {
+            const calendario = document.getElementById('calendarioMes');
+            const hoy = new Date();
+            const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+            const ultimoDia = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+            
+            const nombreMes = hoy.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
+            let html = `<div style="margin-bottom:15px; text-align:center; font-weight:600; color:#27AE60; text-transform:capitalize;">${nombreMes}</div>`;
+            let totalMes = 0;
+            let semanaActual = [];
+            let fecha = new Date(primerDia);
+            
+            while (fecha <= ultimoDia) {
+                const fechaStr = fecha.toISOString().split('T')[0];
+                const pagos = getPagosPorFecha(fechaStr);
+                const total = pagos.reduce((sum, p) => sum + p.monto, 0);
+                totalMes += total;
+                
+                semanaActual.push({
+                    dia: fecha.getDate(),
+                    fecha: fechaStr,
+                    pagos: pagos.length,
+                    total: total,
+                    esHoy: fechaStr === hoy.toISOString().split('T')[0]
+                });
+                
+                if (fecha.getDay() === 0 || fecha.getDate() === ultimoDia.getDate()) {
+                    html += `
+                        <div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:4px; margin-bottom:8px;">
+                            ${semanaActual.map(d => `
+                                <div style="background:${d.esHoy ? '#e8f5e9' : 'white'}; border:2px solid ${d.esHoy ? '#27AE60' : '#eee'}; border-radius:8px; padding:8px; text-align:center; min-height:70px;">
+                                    <div style="font-weight:700; font-size:0.9rem; color:${d.esHoy ? '#27AE60' : '#333'};">${d.dia}</div>
+                                    ${d.pagos > 0 ? `
+                                        <div style="font-size:0.65rem; color:#666; margin-top:4px;">${d.pagos} pagos</div>
+                                        <div style="font-size:0.75rem; font-weight:600; color:#27AE60; margin-top:2px;">$${fmt(d.total)}</div>
+                                    ` : `<div style="font-size:0.65rem; color:#ccc; margin-top:4px;">-</div>`}
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                    semanaActual = [];
+                }
+                
+                fecha.setDate(fecha.getDate() + 1);
+            }
+            
+            html = `
+                <div style="background:linear-gradient(135deg,#27AE60,#2ECC71); color:white; border-radius:12px; padding:15px; margin-bottom:15px; text-align:center;">
+                    <div style="font-size:0.8rem; opacity:0.9;">Total Mes</div>
+                    <div style="font-size:2rem; font-weight:700;">$${fmt(totalMes)}</div>
+                </div>
+            ` + html;
+            
+            calendario.innerHTML = html;
+            document.getElementById('periodoActual').textContent = 'ESTE MES';
+            document.getElementById('montoEsperado').textContent = '$' + fmt(totalMes);
+        }
+        
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // BADGE Y NOTIFICACIONES
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        
+        function actualizarBadgePagosHoy() {
+            const hoy = new Date().toISOString().split('T')[0];
+            const pagosHoy = getPagosPorFecha(hoy);
+            
+            const badge = document.getElementById('badgePagosHoy');
+            const btn = document.getElementById('btnPagosHoy');
+            
+            if (pagosHoy.length > 0) {
+                badge.textContent = pagosHoy.length;
+                badge.style.display = 'inline-block';
+                btn.classList.add('alert');
+            } else {
+                badge.style.display = 'none';
+                btn.classList.remove('alert');
+            }
+        }
+        
+        function verificarPromesasVencidas() {
+            const hoy = new Date().toISOString().split('T')[0];
+            let vencidas = 0;
+            
+            for (let telefono in promesas) {
+                promesas[telefono].forEach((p, idx) => {
+                    if (p.estado === 'pendiente' && p.fecha < hoy) {
+                        promesas[telefono][idx].estado = 'incumplida';
+                        promesas[telefono][idx].fechaIncumplida = new Date().toISOString();
+                        vencidas++;
+                    }
+                });
+            }
+            
+            if (vencidas > 0) {
+                localStorage.setItem('promesasPago', JSON.stringify(promesas));
+            }
+        }
+        
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // FUNCIONES AUXILIARES
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        
+        function formatDateShort(isoDate) {
+            const date = new Date(isoDate);
+            return date.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+        }
+        
+        // Verificar promesas vencidas al cargar
+        verificarPromesasVencidas();
+        actualizarBadgePagosHoy();
+        
+        // Actualizar badge cada minuto
+        setInterval(() => {
+            actualizarBadgePagosHoy();
+        }, 60000);
+        
+        console.log('✅ Sistema de Promesas de Pago integrado correctamente');
+        
     </script>
-    
-    <!-- Sistema de Promesas de Pago -->
-    <script src="sistema_promesas_pagos.js"></script>
     
     </div><!-- Cierre de app-content -->
 </body>
