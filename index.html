@@ -1330,7 +1330,7 @@
     </header>
     
     <div class="gps-section">
-        <button class="btn-gps" id="btnGps" onclick="findNearbyClients()">
+        <button class="btn-gps" id="btnGps" onclick="toggleCercania()">
             <i class="fas fa-location-crosshairs"></i>
             CLIENTES CERCA DE MÍ
         </button>
@@ -2390,10 +2390,43 @@
                     break;
             }
             
+            // Si modo cercanía está activo, re-ordenar resultado por distancia
+            if (autoSortByCercania && myLat && myLng) {
+                list = list.sort((a, b) => {
+                    if (a.distance !== null && b.distance === null) return -1;
+                    if (a.distance === null && b.distance !== null) return 1;
+                    if (a.distance !== null && b.distance !== null) return a.distance - b.distance;
+                    return 0;
+                });
+            }
+            
             return list;
         }
         
-        // ===== GPS =====
+        // ===== GPS Y ORDENAMIENTO POR CERCANÍA =====
+        let autoSortByCercania = false;
+        
+        function toggleCercania() {
+            if (autoSortByCercania) {
+                // Desactivar modo cercanía
+                autoSortByCercania = false;
+                const btn = document.getElementById('btnGps');
+                const status = document.getElementById('gpsStatus');
+                btn.innerHTML = '<i class="fas fa-location-crosshairs"></i> CLIENTES CERCA DE MÍ';
+                btn.style.background = '';
+                status.textContent = 'Toca para ordenar por cercanía';
+                status.className = 'gps-status';
+                
+                // Restaurar orden original (por riesgo/atraso)
+                processedClients.sort((a, b) => (b['Días Atraso'] || 0) - (a['Días Atraso'] || 0));
+                render(filterCurrent());
+                return;
+            }
+            
+            // Activar modo cercanía
+            findNearbyClients();
+        }
+        
         function findNearbyClients() {
             const btn = document.getElementById('btnGps');
             const status = document.getElementById('gpsStatus');
@@ -2413,28 +2446,27 @@
                     myLat = pos.coords.latitude;
                     myLng = pos.coords.longitude;
                     
-                    processedClients = processedClients.map(c => {
-                        let dist = null;
-                        if (c.savedCoords) {
-                            dist = calcDist(myLat, myLng, c.savedCoords.lat, c.savedCoords.lng);
-                        }
-                        return {...c, distance: dist};
-                    });
+                    // También actualizar tracking si está activo
+                    if (trackingData.sessionId) {
+                        trackingData.ubicacion = {
+                            lat: myLat, lng: myLng, 
+                            timestamp: new Date().toISOString(),
+                            accuracy: pos.coords.accuracy
+                        };
+                        localStorage.setItem('trackingSession', JSON.stringify(trackingData));
+                    }
                     
-                    processedClients.sort((a, b) => {
-                        if (a.savedCoords && !b.savedCoords) return -1;
-                        if (!a.savedCoords && b.savedCoords) return 1;
-                        if (a.distance === null) return 1;
-                        if (b.distance === null) return -1;
-                        return a.distance - b.distance;
-                    });
+                    calcularDistanciasYOrdenar();
+                    autoSortByCercania = true;
                     
                     hideLoader();
                     btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-location-crosshairs"></i> ACTUALIZAR';
+                    btn.innerHTML = '<i class="fas fa-location-crosshairs"></i> 📍 ORDENADO POR CERCANÍA';
+                    btn.style.background = 'linear-gradient(135deg, #27AE60, #2ECC71)';
                     
-                    const saved = processedClients.filter(c => c.savedCoords).length;
-                    status.textContent = `✅ ${saved} con ubicación exacta`;
+                    const conUbicacion = processedClients.filter(c => c.savedCoords).length;
+                    const conDireccion = processedClients.filter(c => c.distance !== null).length;
+                    status.textContent = `✅ ${conUbicacion} con GPS exacto · ${conDireccion} ordenados`;
                     status.className = 'gps-status ok';
                     
                     render(filterCurrent());
@@ -2443,11 +2475,62 @@
                     hideLoader();
                     btn.disabled = false;
                     btn.innerHTML = '<i class="fas fa-location-crosshairs"></i> CLIENTES CERCA DE MÍ';
+                    btn.style.background = '';
                     status.textContent = '❌ Activa el GPS';
                     status.className = 'gps-status error';
+                    autoSortByCercania = false;
                 },
                 {enableHighAccuracy: true, timeout: 15000}
             );
+        }
+        
+        function calcularDistanciasYOrdenar() {
+            if (!myLat || !myLng) return;
+            
+            processedClients = processedClients.map(c => {
+                let dist = null;
+                
+                // Prioridad 1: Coordenadas GPS guardadas del cliente
+                if (c.savedCoords) {
+                    dist = calcDist(myLat, myLng, c.savedCoords.lat, c.savedCoords.lng);
+                }
+                // Prioridad 2: Geocodificar dirección si existe (estimación por zona)
+                // Se usa la coordenada estimada si fue previamente calculada
+                else if (c._geocoded) {
+                    dist = calcDist(myLat, myLng, c._geocoded.lat, c._geocoded.lng);
+                }
+                
+                return {...c, distance: dist};
+            });
+            
+            // Ordenar: primero los que tienen distancia, luego los que no
+            processedClients.sort((a, b) => {
+                // Primero los que tienen cualquier tipo de distancia
+                if (a.distance !== null && b.distance === null) return -1;
+                if (a.distance === null && b.distance !== null) return 1;
+                // Si ambos tienen distancia, ordenar de menor a mayor
+                if (a.distance !== null && b.distance !== null) return a.distance - b.distance;
+                // Si ninguno tiene distancia, mantener orden original
+                return 0;
+            });
+        }
+        
+        // Actualización automática de cercanía cada vez que el GPS del tracking se actualiza
+        function actualizarCercaniaDesdeTracking() {
+            if (!autoSortByCercania) return;
+            if (!trackingData.ubicacion || !trackingData.ubicacion.lat) return;
+            
+            myLat = trackingData.ubicacion.lat;
+            myLng = trackingData.ubicacion.lng;
+            
+            calcularDistanciasYOrdenar();
+            render(filterCurrent());
+            
+            const status = document.getElementById('gpsStatus');
+            if (status) {
+                const conUbicacion = processedClients.filter(c => c.savedCoords).length;
+                status.textContent = `✅ ${conUbicacion} con GPS · Actualizado ${new Date().toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'})}`;
+            }
         }
         
         function saveLocation(phone) {
@@ -2471,6 +2554,11 @@
                         }
                         return c;
                     });
+                    
+                    // Re-ordenar si el modo cercanía está activo
+                    if (autoSortByCercania) {
+                        calcularDistanciasYOrdenar();
+                    }
                     
                     hideLoader();
                     showToast('✅ Ubicación guardada');
@@ -3708,8 +3796,8 @@ _Conserve esta notificación como comprobante_`;
                                  convenios[c.id];
                 const convenioInfo = getConvenioStatus(c.Teléfono, c.Saldo);
                 
-                const distHtml = hasSaved && c.distance !== null
-                    ? `<span class="distance-badge saved">${fmtDist(c.distance)} 📍</span>` : '';
+                const distHtml = c.distance !== null
+                    ? `<span class="distance-badge ${hasSaved ? 'saved' : ''}">${fmtDist(c.distance)} ${hasSaved ? '📍' : '~'}</span>` : '';
                 
                 const paidHtml = todayAmount > 0 ? `<span class="paid-badge">✓ $${fmt(todayAmount)}</span>` : '';
                 
@@ -6015,6 +6103,11 @@ _LeGaXi Asociados_`;
                         };
                         localStorage.setItem('trackingSession', JSON.stringify(trackingData));
                         enviarActividadAServidor({ tipo: 'ubicacion_actualizada', ubicacion: trackingData.ubicacion });
+                        
+                        // Auto-actualizar orden por cercanía si está activo
+                        if (typeof actualizarCercaniaDesdeTracking === 'function') {
+                            actualizarCercaniaDesdeTracking();
+                        }
                     },
                     (error) => console.warn('GPS no disponible:', error),
                     { enableHighAccuracy: true, timeout: 10000 }
