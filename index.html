@@ -2011,29 +2011,43 @@
             try {
                 let url = GOOGLE_SCRIPT_URL + '?action=' + encodeURIComponent(action);
                 
-                const options = {
-                    method: 'GET',
-                    redirect: 'follow'
+                if (!data) {
+                    // GET simple
+                    const response = await fetch(url, { method: 'GET', redirect: 'follow' });
+                    const text = await response.text();
+                    try { return JSON.parse(text); } 
+                    catch (e) { return { error: 'Invalid response', raw: text }; }
+                }
+                
+                // POST con manejo correcto del redirect de GAS
+                // GAS devuelve 302 y el browser convierte POST→GET perdiendo el body
+                // Solución: hacer fetch manual siguiendo el redirect con POST
+                const postOptions = {
+                    method: 'POST',
+                    redirect: 'manual',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify(data)
                 };
                 
-                // Si hay datos, usar POST
-                if (data) {
-                    options.method = 'POST';
-                    options.body = JSON.stringify(data);
-                    options.headers = {
-                        'Content-Type': 'text/plain'
-                    };
+                const response = await fetch(url, postOptions);
+                
+                // GAS responde con 302 redirect - seguirlo manualmente con POST
+                if (response.type === 'opaqueredirect' || response.status === 0 || (response.status >= 300 && response.status < 400)) {
+                    const redirectUrl = response.headers.get('Location') || url;
+                    const response2 = await fetch(redirectUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain' },
+                        body: JSON.stringify(data)
+                    });
+                    const text = await response2.text();
+                    try { return JSON.parse(text); }
+                    catch (e) { return { error: 'Invalid response', raw: text }; }
                 }
                 
-                const response = await fetch(url, options);
                 const text = await response.text();
+                try { return JSON.parse(text); }
+                catch (e) { return { error: 'Invalid response', raw: text }; }
                 
-                try {
-                    return JSON.parse(text);
-                } catch (e) {
-                    console.error('Response not JSON:', text);
-                    return { error: 'Invalid response', raw: text };
-                }
             } catch (error) {
                 console.error('API Error:', error);
                 return { error: error.message };
