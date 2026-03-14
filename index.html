@@ -7,7 +7,7 @@
     
     <!-- Font Awesome con fallback -->
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-    <link rel="stylesheet" href="https://script.google.com/macros/s/AKfycbzdl7hXVD6sbBSRA_bZeo3v6nXEUpdohgD1cHDrHuTyNopNQt1nss8UiAokLy-ARWM5/exec">
+    <link rel="stylesheet" hrefhttps://script.google.com/macros/s/AKfycbzdl7hXVD6sbBSRA_bZeo3v6nXEUpdohgD1cHDrHuTyNopNQt1nss8UiAokLy-ARWM5/exec">
     
     <!-- Fallback si Font Awesome no carga -->
     <script>
@@ -1975,30 +1975,41 @@
         document.addEventListener('DOMContentLoaded', async () => {
             showLoader('Conectando...');
             
-            // Intentar sincronizar con la nube
-            await initialSync();
+            try {
+                // Intentar sincronizar con la nube (con timeout de 15s)
+                await Promise.race([
+                    initialSync(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout sync')), 15000))
+                ]).catch(e => console.warn('Sync timeout/error:', e.message));
+            } catch(e) {
+                console.error('Error en sync inicial:', e);
+            }
             
-            initClients();
-            render(filterCurrent());
-            document.getElementById('searchInput').addEventListener('input', debounce(doSearch, 300));
-            document.getElementById('payDate').valueAsDate = new Date();
-            document.getElementById('payCapturista').value = lastCapturista;
-            updateCollectedTotal();
-            updateSyncStatus();
-            
-            // Configurar infinite scroll
-            setupInfiniteScroll();
+            try {
+                initClients();
+                render(filterCurrent());
+                document.getElementById('searchInput').addEventListener('input', debounce(doSearch, 300));
+                document.getElementById('payDate').valueAsDate = new Date();
+                document.getElementById('payCapturista').value = lastCapturista;
+                updateCollectedTotal();
+                updateSyncStatus();
+                setupInfiniteScroll();
+            } catch(e) {
+                console.error('Error inicializando app:', e);
+            }
             
             hideLoader();
             
             // Inicializar sistema de promesas
             setTimeout(() => {
-                verificarPromesasVencidas();
-                if (Object.keys(convenios).length > 0) {
-                    convertirConveniosAPromesas();
-                }
-                actualizarBadgePagosHoy();
-                console.log('✅ Sistema de promesas inicializado');
+                try {
+                    verificarPromesasVencidas();
+                    if (Object.keys(convenios).length > 0) {
+                        convertirConveniosAPromesas();
+                    }
+                    actualizarBadgePagosHoy();
+                    console.log('✅ Sistema de promesas inicializado');
+                } catch(e) { console.error('Error en promesas:', e); }
             }, 1000);
             
             // Listeners de conexión
@@ -2057,114 +2068,129 @@
         async function initialSync() {
             if (!navigator.onLine) {
                 console.log('Offline - usando datos locales');
+                const cached = localStorage.getItem('cloudData');
+                if (cached) { try { cloudData = JSON.parse(cached); useCloudData = true; } catch(e) {} }
                 return;
             }
-            
             try {
                 const result = await callGoogleAPI('fullSync');
-                
                 if (result.error || !result.success) {
                     console.error('Sync error:', result.error);
+                    const cached = localStorage.getItem('cloudData');
+                    if (cached) { try { cloudData = JSON.parse(cached); useCloudData = true; } catch(e) {} }
                     showToast('⚠️ Usando datos locales');
                     return;
                 }
-                
-                // Los datos vienen en result.data
                 const data = result.data || result;
                 
-                // Guardar datos de la nube
-                cloudData = {
-                    clientes: data.clientes || [],
-                    pagos: data.pagos || [],
-                    convenios: data.convenios || []
-                };
-                useCloudData = true;
+                // --- CLIENTES ---
+                const cloudClientes = data.clientes || [];
+                if (cloudClientes.length > 0) {
+                    cloudData.clientes = cloudClientes;
+                    useCloudData = true;
+                } else {
+                    const cached = localStorage.getItem('cloudData');
+                    if (cached) { try { const cd = JSON.parse(cached); if (cd.clientes && cd.clientes.length > 0) { cloudData.clientes = cd.clientes; useCloudData = true; } } catch(e) {} }
+                    console.warn('Nube sin clientes, manteniendo datos locales');
+                }
+                
+                // --- PAGOS (merge inteligente, NO resetear) ---
+                const cloudPagos = data.pagos || [];
+                cloudData.pagos = cloudPagos;
+                const localPayments = JSON.parse(localStorage.getItem('clientPayments') || '{}');
+                const cloudPaymentIds = new Set();
+                cloudPagos.forEach(p => { if (p.id) cloudPaymentIds.add(p.id); });
+                const mergedPayments = {};
+                const mergedAjustes = {};
+                const seenPaymentIds = new Set();
+                
+                cloudPagos.forEach(p => {
+                    if (p.id && seenPaymentIds.has(p.id)) return;
+                    if (p.id) seenPaymentIds.add(p.id);
+                    const rawPhone = p.clienteId || p['Teléfono'] || p.telefono || '';
+                    const clientKey = normalizarTelefono(rawPhone);
+                    if (!clientKey) return;
+                    if (!mergedPayments[clientKey]) mergedPayments[clientKey] = [];
+                    const amount = parseFloat(p.amount || p.monto) || 0;
+                    mergedPayments[clientKey].push({
+                        amount, date: p.date || p.fecha, capturista: p.capturista || p.cobrador,
+                        note: p.note || p.notas, folio: p.folio || p.id,
+                        saldoAntes: parseFloat(p.saldoAntes) || 0, saldoDespues: parseFloat(p.saldoDespues) || 0,
+                        timestamp: p.timestamp, id: p.id, cliente: p.Cliente || p.cliente || ''
+                    });
+                    mergedAjustes[clientKey] = (mergedAjustes[clientKey] || 0) + amount;
+                });
+                
+                Object.entries(localPayments).forEach(([key, localPagos]) => {
+                    const nk = normalizarTelefono(key);
+                    if (!nk) return;
+                    localPagos.forEach(lp => {
+                        if (lp.id && seenPaymentIds.has(lp.id)) return;
+                        if (lp.id) seenPaymentIds.add(lp.id);
+                        if (!mergedPayments[nk]) mergedPayments[nk] = [];
+                        mergedPayments[nk].push(lp);
+                        mergedAjustes[nk] = (mergedAjustes[nk] || 0) + (lp.amount || 0);
+                    });
+                });
+                payments = mergedPayments;
+                saldoAjustes = mergedAjustes;
+                
+                // --- CONVENIOS (merge, no resetear) ---
+                const cloudConvenios = data.convenios || [];
+                const localConvenios = JSON.parse(localStorage.getItem('clientConvenios') || '{}');
+                if (cloudConvenios.length > 0) {
+                    convenios = {};
+                    cloudConvenios.forEach(c => {
+                        if (c.estado === 'cancelado') return;
+                        const phone = c['Teléfono'] || c.telefono || c.clienteId;
+                        if (phone) { const np = normalizarTelefono(phone); if (np) convenios[np] = {
+                            id: c.id, semanas: Number(c.semanas)||0, pagoSemanal: Number(c.pagoSemanal)||0,
+                            fechaInicio: c.fechaInicio, fechaFin: c.fechaFin, fechaLimiteContado: c.fechaLimiteContado,
+                            notas: c.notas, saldoInicial: Number(c.saldoInicial)||0, cliente: c.Cliente||c.cliente,
+                            telefono: phone, estado: c.estado||'activo', creadoEn: c.creadoEn,
+                            frecuencia: c.frecuencia||'semanal', aceptado: c.aceptado
+                        };}
+                    });
+                } else { convenios = localConvenios; }
+                
+                // --- PROMESAS (merge) ---
+                const cloudPromesas = data.promesas || [];
+                if (cloudPromesas.length > 0) {
+                    const localPromesas = JSON.parse(localStorage.getItem('promesasPago') || '{}');
+                    promesas = {};
+                    cloudPromesas.forEach(p => {
+                        const ph = normalizarTelefono(p['Teléfono'] || p.telefono || '');
+                        if (!ph) return;
+                        if (!promesas[ph]) promesas[ph] = [];
+                        promesas[ph].push({ fecha: p.Fecha||p.fecha, monto: Number(p.Monto||p.monto)||0,
+                            nota: p.Nota||p.nota||'', registrada: p.Registrada||p.registrada,
+                            estado: p.Estado||p.estado||'pendiente', cobrador: p.Cobrador||p.cobrador||'',
+                            esConvenio: p.EsConvenio===true||p.EsConvenio==='true'||p.esConvenio===true,
+                            convenioId: p.ConvenioId||p.convenioId||'' });
+                    });
+                    Object.entries(localPromesas).forEach(([key, arr]) => {
+                        const nk = normalizarTelefono(key); if (!nk) return;
+                        if (!promesas[nk]) promesas[nk] = [];
+                        arr.forEach(lp => { if (!promesas[nk].some(cp => cp.fecha===lp.fecha && cp.monto===lp.monto)) promesas[nk].push(lp); });
+                    });
+                }
+                
                 lastSyncTime = result.timestamp || new Date().toISOString();
                 localStorage.setItem('lastSyncTime', lastSyncTime);
                 localStorage.setItem('cloudData', JSON.stringify(cloudData));
-                
-                // Convertir pagos de array a objeto por ID o teléfono
-                payments = {};
-                saldoAjustes = {};
-                const seenPaymentIds = new Set();
-                
-                console.log('Procesando pagos, muestra del primero:', cloudData.pagos?.[0]);
-                
-                (cloudData.pagos || []).forEach(p => {
-                    // Evitar duplicados
-                    if (p.id && seenPaymentIds.has(p.id)) return;
-                    if (p.id) seenPaymentIds.add(p.id);
-                    
-                    // Usar clienteId si existe, sino Teléfono
-                    const clientKey = p.clienteId || p.Teléfono || p.telefono;
-                    if (!clientKey) return;
-                    
-                    if (!payments[clientKey]) payments[clientKey] = [];
-                    const amount = parseFloat(p.amount || p.monto) || 0;
-                    
-                    // Obtener nombre del cliente - probar varias formas
-                    const nombreCliente = p.Cliente || p.cliente || p.CLIENTE || '';
-                    
-                    payments[clientKey].push({
-                        amount: amount,
-                        date: p.date || p.fecha,
-                        capturista: p.capturista || p.cobrador,
-                        note: p.note || p.notas,
-                        folio: p.folio || p.id,
-                        saldoAntes: parseFloat(p.saldoAntes) || 0,
-                        saldoDespues: parseFloat(p.saldoDespues) || 0,
-                        timestamp: p.timestamp,
-                        id: p.id,
-                        cliente: nombreCliente
-                    });
-                    saldoAjustes[clientKey] = (saldoAjustes[clientKey] || 0) + amount;
-                });
-                
-                // Convenios - convertir array a objeto por teléfono normalizado
-                convenios = {};
-                (cloudData.convenios || []).forEach(c => {
-                    const phone = c.Teléfono || c.telefono || c.clienteId;
-                    if (phone) {
-                        // Guardar con múltiples claves para encontrar más fácil
-                        convenios[phone] = c;
-                        // También guardar con teléfono limpio
-                        const cleanPhone = String(phone).replace(/[^0-9]/g, '');
-                        if (cleanPhone && cleanPhone !== phone) {
-                            convenios[cleanPhone] = c;
-                        }
-                        // También guardar últimos 10 dígitos
-                        if (cleanPhone.length >= 10) {
-                            convenios[cleanPhone.slice(-10)] = c;
-                        }
-                    }
-                });
-                
-                console.log('Convenios cargados:', Object.keys(convenios).length);
-                
-                // Convertir convenios activos en promesas automáticamente
-                convertirConveniosAPromesas();
-                
-                // Guardar localmente como backup
                 localStorage.setItem('clientPayments', JSON.stringify(payments));
                 localStorage.setItem('saldoAjustes', JSON.stringify(saldoAjustes));
                 localStorage.setItem('clientConvenios', JSON.stringify(convenios));
-                
-                // Procesar pendientes
+                localStorage.setItem('promesasPago', JSON.stringify(promesas));
                 await processPendingSync();
-                
-                console.log('Sync completo:', cloudData.clientes.length, 'clientes,', cloudData.pagos.length, 'pagos');
-                
+                console.log('✅ Sync completo:', cloudData.clientes?.length||0, 'clientes,', Object.keys(payments).length, 'con pagos,', Object.keys(convenios).length, 'convenios');
             } catch (error) {
                 console.error('Initial sync failed:', error);
-                // Intentar cargar datos de la nube guardados localmente
                 const cached = localStorage.getItem('cloudData');
-                if (cached) {
-                    cloudData = JSON.parse(cached);
-                    useCloudData = true;
-                }
+                if (cached) { try { cloudData = JSON.parse(cached); useCloudData = true; } catch(e) {} }
             }
         }
-        
+
         async function processPendingSync() {
             if (syncPending.length === 0) return;
             
@@ -2260,6 +2286,17 @@
             }
         }
         
+
+        // ═══ FUNCIÓN AUXILIAR: Normalizar teléfono para keys consistentes ═══
+        function normalizarTelefono(phone) {
+            if (!phone) return '';
+            const clean = String(phone).replace(/[^0-9]/g, '');
+            if (clean.length >= 10) return clean.slice(-10);
+            if (clean.length >= 7) return clean;
+            if (String(phone).includes('SIN-TEL') || String(phone).includes('conv_')) return String(phone);
+            return clean || String(phone);
+        }
+
         function getActiveClients() {
             // Si tenemos datos de la nube con clientes, usarlos
             if (useCloudData && cloudData.clientes && cloudData.clientes.length > 0) {
@@ -2323,11 +2360,13 @@
                 const saldoOriginal = parseFloat(c.SaldoOriginal) || parseFloat(c.Saldo) || 0;
                 
                 // Buscar pagos por ID, teléfono o folio
-                const totalPagado = saldoAjustes[clientKey] || saldoAjustes[phone] || saldoAjustes[folio] || 0;
+                const normalizedPhone = normalizarTelefono(phone);
+                const normalizedId = normalizarTelefono(clientId);
+                const totalPagado = saldoAjustes[normalizedPhone] || saldoAjustes[normalizedId] || saldoAjustes[clientKey] || saldoAjustes[phone] || saldoAjustes[folio] || 0;
                 const saldoActual = Math.max(0, saldoOriginal - totalPagado);
                 
                 // Obtener historial de pagos
-                const historialPagos = payments[clientKey] || payments[phone] || payments[folio] || [];
+                const historialPagos = payments[normalizedPhone] || payments[normalizedId] || payments[clientKey] || payments[phone] || payments[folio] || [];
                 
                 return {
                     ...c,
@@ -3124,7 +3163,8 @@ _Conserve esta notificación como comprobante_`;
             const pagoId = 'pago_' + Date.now();
             
             // Usar clienteId como clave principal para pagos
-            const clientKey = clienteId || phone;
+            const normalizedPhone = normalizarTelefono(phone);
+            const clientKey = normalizedPhone || clienteId || phone;
             
             // Actualizar historial de pagos
             if (!payments[clientKey]) {
@@ -4112,7 +4152,8 @@ _Conserve esta notificación como comprobante_`;
         function getConvenioStatus(phone, saldoActual) {
             // Buscar convenio por múltiples formas
             const cleanPhone = String(phone || '').replace(/[^0-9]/g, '');
-            const convenio = convenios[phone] || 
+            const normalizedPhone = normalizarTelefono(phone);
+            const convenio = convenios[normalizedPhone] || convenios[phone] || 
                              convenios[cleanPhone] || 
                              convenios[cleanPhone.slice(-10)];
             if (!convenio) return null;
@@ -4156,7 +4197,8 @@ _Conserve esta notificación como comprobante_`;
             
             // Buscar convenio por múltiples formas
             const cleanPhone = String(phone || '').replace(/[^0-9]/g, '');
-            const convenio = convenios[phone] || 
+            const normalizedPhone2 = normalizarTelefono(phone);
+            const convenio = convenios[normalizedPhone2] || convenios[phone] || 
                              convenios[cleanPhone] || 
                              convenios[cleanPhone.slice(-10)];
             
@@ -4747,7 +4789,10 @@ _LeGaXi Asociados_`;
             
             if (!confirm('¿Cancelar el convenio de pago?\n\nEsto solo elimina el convenio, los pagos registrados se mantienen.')) return;
             
+            const normalizedPhone = normalizarTelefono(currentConvenioClient.phone);
             delete convenios[currentConvenioClient.phone];
+            delete convenios[normalizedPhone];
+            syncToCloud('deleteConvenio', { phone: currentConvenioClient.phone });
             localStorage.setItem('clientConvenios', JSON.stringify(convenios));
             
             // Sincronizar eliminación a la nube
