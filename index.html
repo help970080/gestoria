@@ -7,7 +7,7 @@
     
     <!-- Font Awesome con fallback -->
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-    <link rel="stylesheet" hrefhttps://script.google.com/macros/s/AKfycbzdl7hXVD6sbBSRA_bZeo3v6nXEUpdohgD1cHDrHuTyNopNQt1nss8UiAokLy-ARWM5/exec">
+    <link rel="stylesheet" href="https://script.google.com/macros/s/AKfycbzdl7hXVD6sbBSRA_bZeo3v6nXEUpdohgD1cHDrHuTyNopNQt1nss8UiAokLy-ARWM5/exec">
     
     <!-- Fallback si Font Awesome no carga -->
     <script>
@@ -2361,7 +2361,7 @@
                 
                 // Buscar pagos por ID, teléfono o folio
                 const normalizedPhone = normalizarTelefono(phone);
-                const normalizedId = normalizarTelefono(clientId);
+                const normalizedId = normalizarTelefono(clientKey);
                 const totalPagado = saldoAjustes[normalizedPhone] || saldoAjustes[normalizedId] || saldoAjustes[clientKey] || saldoAjustes[phone] || saldoAjustes[folio] || 0;
                 const saldoActual = Math.max(0, saldoOriginal - totalPagado);
                 
