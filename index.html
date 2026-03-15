@@ -4034,6 +4034,11 @@ _Conserve esta notificación como comprobante_`;
                                 <i class="fas fa-image"></i> Ver Docs ${c.FotoINE || c.FotoPagare ? '<span style="background:#27ae60;padding:2px 6px;border-radius:8px;font-size:0.65rem;margin-left:4px;">✓</span>' : ''}
                             </button>
                         </div>
+                        <div class="action-grid-2" style="margin-top:8px;">
+                            <button class="act-btn" onclick="event.stopPropagation(); openGuion('${esc(c.Cliente)}', ${c.Saldo}, ${c['Días Atraso']}, ${c.Tarifa || 0}, '${esc(c.Teléfono)}')" style="background:#c0392b; color:white; grid-column: span 2;">
+                                <i class="fas fa-gavel"></i> 📋 Guión de Cobranza
+                            </button>
+                        </div>
                     </div>
                 </div>`;
             }).join('');
@@ -6426,6 +6431,276 @@ _LeGaXi Asociados_`;
         console.log('✅ Sistema de Monitoreo de Cobradores activado');
 
     // ═══════════════════════════════════════════════════════════════
+    // GUIÓN DE COBRANZA - Teleprompter por nivel de atraso
+    // ═══════════════════════════════════════════════════════════════
+    
+    function openGuion(nombre, saldo, dias, tarifa, telefono) {
+        const firstName = nombre.split(' ')[0];
+        const gestor = lastCapturista || 'Gestor';
+        const saldoFmt = '$' + Number(saldo).toLocaleString('es-MX', {minimumFractionDigits:0});
+        const tarifaFmt = '$' + Number(tarifa).toLocaleString('es-MX', {minimumFractionDigits:0});
+        
+        let nivel, color, titulo, guion;
+        
+        if (dias <= 90) {
+            nivel = 1;
+            color = '#e67e22';
+            titulo = '⚡ COBRANZA FIRME — ' + dias + ' días';
+            guion = generarGuionNivel1(firstName, nombre, saldoFmt, tarifaFmt, dias, gestor);
+        } else if (dias <= 180) {
+            nivel = 2;
+            color = '#e74c3c';
+            titulo = '🔥 COBRANZA FUERTE — ' + dias + ' días';
+            guion = generarGuionNivel2(firstName, nombre, saldoFmt, tarifaFmt, dias, gestor);
+        } else if (dias <= 365) {
+            nivel = 3;
+            color = '#8e44ad';
+            titulo = '⚖️ PRE-JURÍDICO — ' + dias + ' días';
+            guion = generarGuionNivel3(firstName, nombre, saldoFmt, tarifaFmt, dias, gestor);
+        } else {
+            nivel = 4;
+            color = '#2c3e50';
+            titulo = '🚨 ÚLTIMA OPORTUNIDAD — ' + dias + ' días';
+            guion = generarGuionNivel4(firstName, nombre, saldoFmt, tarifaFmt, dias, gestor);
+        }
+        
+        document.getElementById('guionTitulo').textContent = titulo;
+        document.getElementById('guionTitulo').style.background = color;
+        document.getElementById('guionContenido').innerHTML = guion;
+        document.getElementById('guionModal').style.display = 'flex';
+    }
+    
+    function closeGuion() {
+        document.getElementById('guionModal').style.display = 'none';
+    }
+    
+    // ═══ NIVEL 1: 1-90 días — Firme, directo, sin rodeos ═══
+    function generarGuionNivel1(first, full, saldo, tarifa, dias, gestor) {
+        return `
+        <div class="guion-section">
+            <div class="guion-fase">1. APERTURA — Ir al grano</div>
+            <div class="guion-texto">
+                "Buen día. <strong>${full}</strong>, soy <strong>${gestor}</strong> de Credia. Vengo por su adeudo vencido."
+            </div>
+            <div class="guion-nota">👁️ Si dice que no es → Mostrar INE desde "Ver Docs"</div>
+            <div class="guion-nota">👁️ Si dice que no está → "¿A qué hora regresa? Porque voy a tener que volver y la situación se complica cada semana."</div>
+        </div>
+        
+        <div class="guion-section">
+            <div class="guion-fase">2. DATOS — Que sienta que sabes todo</div>
+            <div class="guion-texto">
+                "Su cuenta tiene <strong>${dias} días de atraso</strong>. El saldo es <strong>${saldo}</strong>. Su pago semanal es de <strong>${tarifa}</strong>. Ya se le ha buscado varias veces."
+            </div>
+        </div>
+        
+        <div class="guion-section">
+            <div class="guion-fase">3. PRESIÓN — Consecuencia inmediata</div>
+            <div class="guion-texto">
+                "Cada semana que pasa se acumulan cargos. Si no regulariza ahora, su expediente se escala a cobranza legal y ya no voy a poder ayudarle."
+            </div>
+        </div>
+        
+        <div class="guion-section">
+            <div class="guion-fase">4. CIERRE — Solo 2 opciones</div>
+            <div class="guion-texto">
+                "<strong>¿Liquida hoy el total de ${saldo} o hacemos un convenio de pagos?</strong>"
+            </div>
+            <div class="guion-nota">⚡ NUNCA preguntar "¿puede pagar?" — siempre "¿cuándo paga?"</div>
+        </div>
+        
+        <div class="guion-section">
+            <div class="guion-fase">🔄 SI DICE "NO TENGO"</div>
+            <div class="guion-texto">
+                "¿Cuánto puede dar HOY como abono? <strong>Lo que sea detiene el proceso.</strong> ¿${tarifa}? ¿La mitad?"
+            </div>
+        </div>
+        
+        <div class="guion-section">
+            <div class="guion-fase">✅ AL CERRAR — Registrar compromiso</div>
+            <div class="guion-texto">
+                "Bien, queda registrado su compromiso de pago por $____ para el día ____. Si no cumple, el expediente avanza automáticamente. Le conviene cumplir."
+            </div>
+            <div class="guion-nota">📱 Registrar promesa o pago en la app FRENTE al cliente</div>
+        </div>`;
+    }
+    
+    // ═══ NIVEL 2: 91-180 días — Fuerte, consecuencias legales ═══
+    function generarGuionNivel2(first, full, saldo, tarifa, dias, gestor) {
+        return `
+        <div class="guion-section">
+            <div class="guion-fase">1. APERTURA — Autoridad</div>
+            <div class="guion-texto">
+                "Buen día. Soy <strong>${gestor}</strong> del <strong>departamento de recuperación</strong> de LeGaXi Asociados. Necesito hablar con <strong>${full}</strong> sobre un asunto legal urgente."
+            </div>
+            <div class="guion-nota">👁️ Si niega ser → INE. "Tenemos su identificación y dirección registrada en el contrato."</div>
+        </div>
+        
+        <div class="guion-section">
+            <div class="guion-fase">2. GOLPE DE REALIDAD</div>
+            <div class="guion-texto">
+                "Su cuenta lleva <strong>${dias} días vencida</strong> con un saldo de <strong>${saldo}</strong>. Usted firmó un pagaré que es un <strong>título ejecutivo</strong> — se puede cobrar por la vía judicial sin juicio previo."
+            </div>
+        </div>
+        
+        <div class="guion-section">
+            <div class="guion-fase">3. CONTRASTE — Costo de no pagar</div>
+            <div class="guion-texto">
+                "Si esto llega a demanda, le van a cobrar el saldo <strong>MÁS</strong> intereses moratorios, gastos judiciales y honorarios de abogado. Estamos hablando del <strong>doble o triple</strong> de lo que debe hoy. Además queda en <strong>Buró de Crédito</strong>."
+            </div>
+        </div>
+        
+        <div class="guion-section">
+            <div class="guion-fase">4. PUERTA DE SALIDA — Urgencia</div>
+            <div class="guion-texto">
+                "Pero HOY todavía puedo ofrecerle un <strong>convenio</strong>. La empresa me autorizó reestructurar su deuda. <strong>¿Quiere arreglar esto hoy por ${saldo} o lo dividimos en pagos semanales de ${tarifa}?</strong>"
+            </div>
+            <div class="guion-nota">⚡ Siempre dar solo 2 opciones. Ambas son PAGAR.</div>
+        </div>
+        
+        <div class="guion-section">
+            <div class="guion-fase">🔄 SI SE PONE AGRESIVO</div>
+            <div class="guion-texto">
+                "Entiendo que es incómodo, yo no vengo a pelear. Vengo a evitarle un problema mayor. Si arreglamos hoy, aquí queda. Si no, la siguiente visita ya no soy yo — es un notificador judicial."
+            </div>
+        </div>
+        
+        <div class="guion-section">
+            <div class="guion-fase">🔄 SI DICE "DEMÁNDEME"</div>
+            <div class="guion-texto">
+                "Está en su derecho. Solo le informo que el pagaré que firmó ya es suficiente para ejecutar el cobro. No necesitamos ganar un juicio — ya lo tenemos ganado. La demanda solo le agrega costos A USTED."
+            </div>
+        </div>
+        
+        <div class="guion-section">
+            <div class="guion-fase">✅ AL CERRAR</div>
+            <div class="guion-texto">
+                "Perfecto. Queda registrado. Le doy su comprobante. Si cumple con los pagos, su expediente se cierra. Si no cumple, <strong>se activa el proceso legal automáticamente.</strong>"
+            </div>
+            <div class="guion-nota">📱 Registrar convenio o promesa FRENTE al cliente. Que vea que es formal.</div>
+        </div>`;
+    }
+    
+    // ═══ NIVEL 3: 181-365 días — Pre-jurídico ═══
+    function generarGuionNivel3(first, full, saldo, tarifa, dias, gestor) {
+        return `
+        <div class="guion-section">
+            <div class="guion-fase">1. APERTURA — Notificación formal</div>
+            <div class="guion-texto">
+                "Buen día. Soy <strong>${gestor}</strong>, <strong>gestor jurídico</strong> de LeGaXi Asociados. Traigo una <strong>notificación formal de cobro</strong> para <strong>${full}</strong>."
+            </div>
+            <div class="guion-nota">🎯 Tono serio, profesional. Llevar carpeta o tablet visible.</div>
+        </div>
+        
+        <div class="guion-section">
+            <div class="guion-fase">2. SITUACIÓN GRAVE</div>
+            <div class="guion-texto">
+                "Su expediente tiene <strong>${dias} días de atraso</strong>. Saldo: <strong>${saldo}</strong>. El área jurídica ya tiene su caso listo para presentar demanda. Esto incluye <strong>embargo de bienes</strong> y afectación permanente en Buró."
+            </div>
+        </div>
+        
+        <div class="guion-section">
+            <div class="guion-fase">3. OFERTA — Última antes de jurídico</div>
+            <div class="guion-texto">
+                "Me mandaron a darle una <strong>última oportunidad</strong> de arreglar esto sin abogados. La deuda completa es <strong>${saldo}</strong>. <strong>¿Liquida hoy o armamos un convenio de pagos semanales de ${tarifa}?</strong>"
+            </div>
+            <div class="guion-nota">⚡ No hay descuento. El beneficio es evitar la demanda.</div>
+        </div>
+        
+        <div class="guion-section">
+            <div class="guion-fase">4. CIERRE DE PRESIÓN</div>
+            <div class="guion-texto">
+                "<strong>¿Lo arreglamos hoy aquí entre nosotros o prefiere que lo arregle un juez?</strong> Le aseguro que con un juez le va a costar mucho más."
+            </div>
+        </div>
+        
+        <div class="guion-section">
+            <div class="guion-fase">🔄 SI PIDE TIEMPO</div>
+            <div class="guion-texto">
+                "Le puedo dar hasta el <strong>viernes</strong>. Pero si para el viernes no hay abono, el lunes su expediente se turna a jurídico y ya no va a haber oportunidad de arreglo. <strong>¿Para cuándo lo tiene?</strong>"
+            </div>
+        </div>
+        
+        <div class="guion-section">
+            <div class="guion-fase">🔄 SI DICE QUE NO FIRMÓ NADA</div>
+            <div class="guion-texto">
+                "Tenemos el pagaré firmado y su identificación oficial en el expediente. Todo está documentado. Le conviene más arreglar aquí que frente a un juez."
+            </div>
+            <div class="guion-nota">📱 Mostrar foto del INE y pagaré desde "Ver Docs"</div>
+        </div>
+        
+        <div class="guion-section">
+            <div class="guion-fase">✅ AL CERRAR</div>
+            <div class="guion-texto">
+                "Queda el acuerdo registrado. Si cumple, se cancela todo proceso. Si no cumple, la demanda se presenta sin previo aviso."
+            </div>
+        </div>`;
+    }
+    
+    // ═══ NIVEL 4: 365+ días — Última oportunidad ═══
+    function generarGuionNivel4(first, full, saldo, tarifa, dias, gestor) {
+        return `
+        <div class="guion-section">
+            <div class="guion-fase">1. APERTURA — Máxima seriedad</div>
+            <div class="guion-texto">
+                "Buen día. <strong>${full}</strong>, soy <strong>${gestor}</strong> del área de <strong>cobranza judicial</strong> de LeGaXi Asociados. Esta es una <strong>visita de última instancia</strong> antes de proceder legalmente."
+            </div>
+        </div>
+        
+        <div class="guion-section">
+            <div class="guion-fase">2. EXPEDIENTE COMPLETO</div>
+            <div class="guion-texto">
+                "Su caso lleva <strong>${dias} días</strong> — más de <strong>${Math.floor(dias/365)} año${dias>=730?'s':''}</strong> sin pagar. Tenemos su pagaré firmado, su INE, su domicilio verificado. El expediente está <strong>completo para demanda</strong>."
+            </div>
+            <div class="guion-nota">📱 Mostrar INE y pagaré del cliente — que vea que todo está documentado</div>
+        </div>
+        
+        <div class="guion-section">
+            <div class="guion-fase">3. LO QUE VIENE</div>
+            <div class="guion-texto">
+                "Si no arregla hoy: demanda ejecutiva mercantil, <strong>embargo preventivo de bienes</strong>, notificación a referencias y familiares, y reporte permanente en <strong>Buró de Crédito</strong>. Todo eso le va a costar el triple de lo que debe."
+            </div>
+        </div>
+        
+        <div class="guion-section">
+            <div class="guion-fase">4. OFERTA FINAL — Arreglo o demanda</div>
+            <div class="guion-texto">
+                "Hoy es el <strong>último día</strong> que vengo a buscar un arreglo. Su deuda es <strong>${saldo}</strong>. Después de hoy, el expediente pasa directo al abogado y se le cobra el total <strong>más intereses, costas y honorarios</strong>."
+            </div>
+        </div>
+        
+        <div class="guion-section">
+            <div class="guion-fase">5. CIERRE DEFINITIVO</div>
+            <div class="guion-texto">
+                "<strong>¿Liquidamos hoy o hacemos un convenio de pagos? Porque la tercera opción es el juzgado y esa no le conviene.</strong>"
+            </div>
+            <div class="guion-nota">⏱️ Silencio después de preguntar. Que él hable primero. El silencio presiona más que las palabras.</div>
+        </div>
+        
+        <div class="guion-section">
+            <div class="guion-fase">🔄 SI PIDE REBAJAS</div>
+            <div class="guion-texto">
+                "No hay rebajas. El monto es el que firmó en el pagaré. Lo que sí puedo hacer es dividirlo en pagos semanales para que no le pegue de golpe. <strong>¿Cuánto puede dar hoy para empezar?</strong>"
+            </div>
+        </div>
+        
+        <div class="guion-section">
+            <div class="guion-fase">🔄 SI SE NIEGA A TODO</div>
+            <div class="guion-texto">
+                "Está en su derecho. Queda constancia de que se le ofreció un acuerdo y lo rechazó. El proceso legal avanza esta semana. Buena tarde."
+            </div>
+            <div class="guion-nota">🚶 A veces retirarse es la mejor presión. Muchos llaman al día siguiente.</div>
+        </div>
+        
+        <div class="guion-section">
+            <div class="guion-fase">✅ SI ACEPTA</div>
+            <div class="guion-texto">
+                "Perfecto. Registramos el acuerdo ahora mismo. Si cumple, su expediente se cierra definitivamente y sale limpio."
+            </div>
+            <div class="guion-nota">📱 Registrar convenio o pago en la app FRENTE al cliente. Crear promesa de pago.</div>
+        </div>`;
+    }
+    
+    // ═══════════════════════════════════════════════════════════════
     // SISTEMA DE DOCUMENTOS (INE + PAGARÉ) - Cloudinary Upload
     // ═══════════════════════════════════════════════════════════════
     
@@ -6615,6 +6890,25 @@ _LeGaXi Asociados_`;
     }
     
     </script>
+
+    <!-- Modal Guión de Cobranza -->
+    <div id="guionModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:9999;justify-content:center;align-items:flex-start;padding:10px;overflow-y:auto;">
+        <div style="background:#fff;border-radius:12px;width:100%;max-width:500px;max-height:95vh;overflow-y:auto;margin:auto;">
+            <div id="guionTitulo" style="background:#c0392b;color:#fff;padding:15px 20px;border-radius:12px 12px 0 0;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:1;">
+                <h3 style="margin:0;font-size:1rem;"></h3>
+                <button onclick="closeGuion()" style="background:none;border:none;color:#fff;font-size:1.5rem;cursor:pointer;">✕</button>
+            </div>
+            <div id="guionContenido" style="padding:15px;"></div>
+        </div>
+    </div>
+    
+    <style>
+    .guion-section { margin-bottom:16px; border-left:3px solid #e74c3c; padding-left:12px; }
+    .guion-fase { font-size:0.75rem; font-weight:700; color:#e74c3c; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; }
+    .guion-texto { font-size:1rem; line-height:1.6; color:#222; background:#fef9f0; padding:12px; border-radius:8px; margin-bottom:6px; }
+    .guion-texto strong { color:#c0392b; }
+    .guion-nota { font-size:0.78rem; color:#666; font-style:italic; padding:4px 0; border-top:1px dashed #eee; margin-top:4px; }
+    </style>
 
     <!-- Modal Cargar Documentos -->
     <div id="docModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;justify-content:center;align-items:center;padding:15px;">
