@@ -2412,7 +2412,7 @@
             // Filtro por búsqueda (ahora incluye Folio)
             if (q) {
                 list = list.filter(c => 
-                    c.Cliente.toLowerCase().includes(q) ||
+                    (c.Cliente && c.Cliente.toLowerCase().includes(q)) ||
                     String(c.Teléfono || '').includes(q) ||
                     (c.Dirección && c.Dirección.toLowerCase().includes(q)) ||
                     (c.Promotor && c.Promotor.toLowerCase().includes(q)) ||
