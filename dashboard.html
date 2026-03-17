@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LeGaXi — Dashboard</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:#0c0e14;color:#e2e4e9;min-height:100vh}
+.login-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:#0c0e14;z-index:9999;display:flex;align-items:center;justify-content:center}
+.login-box{background:#161922;border:1px solid #252830;border-radius:16px;padding:40px;width:90%;max-width:360px;text-align:center}
+.login-box h2{color:#fff;margin-bottom:8px;font-size:1.3rem}
+.login-box p{color:#666;font-size:.85rem;margin-bottom:24px}
+.login-box input{width:100%;padding:14px;background:#0c0e14;border:1px solid #252830;border-radius:10px;color:#fff;font-size:1rem;text-align:center;letter-spacing:3px;margin-bottom:16px}
+.login-box input:focus{outline:none;border-color:#f59e0b}
+.login-box button{width:100%;padding:14px;background:#f59e0b;color:#000;border:none;border-radius:10px;font-size:1rem;font-weight:600;cursor:pointer}
+.login-box .error{color:#ef4444;font-size:.8rem;margin-top:8px;display:none}
+.hidden{display:none!important}
+
+.header{padding:16px 24px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #1a1d27}
+.header h1{font-size:1.1rem;color:#fff;font-weight:600}
+.header h1 span{color:#f59e0b}
+.header-right{display:flex;align-items:center;gap:12px;font-size:.8rem;color:#666}
+.btn-refresh{background:#1a1d27;border:1px solid #252830;color:#f59e0b;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:.8rem}
+.btn-refresh:hover{background:#252830}
+.btn-logout{background:none;border:1px solid #333;color:#888;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:.8rem}
+
+.content{max-width:1300px;margin:0 auto;padding:20px}
+
+/* KPI Cards */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.kpi{background:#161922;border:1px solid #1e2130;border-radius:14px;padding:20px}
+.kpi-label{font-size:.7rem;text-transform:uppercase;letter-spacing:1.2px;color:#555;margin-bottom:8px}
+.kpi-value{font-size:2rem;font-weight:700;color:#fff}
+.kpi-value.gold{color:#f59e0b}
+.kpi-value.green{color:#22c55e}
+.kpi-value.red{color:#ef4444}
+.kpi-value.blue{color:#3b82f6}
+.kpi-sub{font-size:.75rem;color:#555;margin-top:6px}
+.kpi-sub span{color:#888}
+
+/* Sections */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.section{background:#161922;border:1px solid #1e2130;border-radius:14px;padding:20px}
+.section h3{font-size:.85rem;font-weight:600;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+
+/* Tables */
+.table-container{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+th{padding:8px 10px;text-align:left;color:#555;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #1e2130}
+td{padding:10px;border-bottom:1px solid #111318}
+tr:hover{background:#1a1d27}
+.rank-badge{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;font-weight:700;font-size:.75rem}
+.rank-1{background:#f59e0b;color:#000}
+.rank-2{background:#94a3b8;color:#000}
+.rank-3{background:#b45309;color:#fff}
+.rank-n{background:#1e2130;color:#555}
+.amount{color:#22c55e;font-weight:600}
+.amount-gold{color:#f59e0b;font-weight:600}
+
+/* Promesas */
+.promesa-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #111318}
+.promesa-item:last-child{border:none}
+.promesa-name{font-weight:500;color:#e2e4e9}
+.promesa-meta{font-size:.75rem;color:#555}
+.promesa-monto{color:#f59e0b;font-weight:600}
+
+/* Risk bars */
+.risk-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;margin-top:12px;background:#111318}
+.risk-bar div{height:100%}
+.risk-green{background:#22c55e}
+.risk-yellow{background:#f59e0b}
+.risk-orange{background:#f97316}
+.risk-red{background:#ef4444}
+.risk-legend{display:flex;gap:14px;margin-top:10px;flex-wrap:wrap}
+.risk-legend span{font-size:.7rem;color:#666;display:flex;align-items:center;gap:4px}
+.risk-dot{width:8px;height:8px;border-radius:2px}
+
+/* Cobrador activo */
+.cobrador-card{background:#111318;border-radius:10px;padding:14px;margin-bottom:10px}
+.cobrador-name{font-weight:600;color:#fff;font-size:.9rem}
+.cobrador-stats{display:flex;gap:16px;margin-top:8px;font-size:.78rem}
+.cobrador-stat{color:#666}
+.cobrador-stat strong{color:#e2e4e9}
+.cobrador-online{display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-right:6px;animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+.loading{text-align:center;padding:40px;color:#555}
+.empty{text-align:center;padding:20px;color:#444;font-size:.85rem}
+
+@media(max-width:900px){
+.kpi-grid{grid-template-columns:repeat(2,1fr)}
+.grid-2{grid-template-columns:1fr}
+}
+@media(max-width:500px){
+.kpi-grid{grid-template-columns:1fr}
+.content{padding:12px}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-overlay" id="loginScreen">
+    <div class="login-box">
+        <h2>📊 LeGaXi Dashboard</h2>
+        <p>Acceso exclusivo administrador</p>
+        <input type="password" id="adminPass" placeholder="Clave admin" onkeypress="if(event.key==='Enter')loginAdmin()">
+        <button onclick="loginAdmin()">Entrar</button>
+        <div class="error" id="loginError">Clave incorrecta</div>
+    </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashApp" class="hidden">
+    <div class="header">
+        <h1>📊 LeGaXi <span>Dashboard</span></h1>
+        <div class="header-right">
+            <span id="fechaHoy"></span>
+            <button class="btn-refresh" onclick="cargarDashboard()">🔄 Actualizar</button>
+            <button class="btn-logout" onclick="logoutAdmin()">Salir</button>
+        </div>
+    </div>
+    
+    <div class="content">
+        <!-- KPIs -->
+        <div class="kpi-grid">
+            <div class="kpi">
+                <div class="kpi-label">Cobrado hoy</div>
+                <div class="kpi-value gold" id="kpiHoy">$0</div>
+                <div class="kpi-sub"><span id="kpiHoyCount">0</span> cobros</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Cobrado esta semana</div>
+                <div class="kpi-value green" id="kpiSemana">$0</div>
+                <div class="kpi-sub"><span id="kpiSemanaCount">0</span> cobros</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Cobrado este mes</div>
+                <div class="kpi-value blue" id="kpiMes">$0</div>
+                <div class="kpi-sub"><span id="kpiMesCount">0</span> cobros</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Cartera total</div>
+                <div class="kpi-value" id="kpiCartera">$0</div>
+                <div class="kpi-sub"><span id="kpiClientesCount">0</span> clientes con saldo</div>
+            </div>
+        </div>
+        
+        <div class="grid-2">
+            <!-- Ranking Cobradores -->
+            <div class="section">
+                <h3>🏆 Ranking Cobradores (hoy)</h3>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>#</th><th>Cobrador</th><th>Cobros</th><th>Cobrado</th></tr></thead>
+                        <tbody id="rankingBody"><tr><td colspan="4" class="empty">Cargando...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Promesas vencidas -->
+            <div class="section">
+                <h3>⚠️ Promesas que vencen hoy</h3>
+                <div id="promesasBody"><div class="empty">Cargando...</div></div>
+            </div>
+        </div>
+        
+        <div class="grid-2">
+            <!-- Cobradores activos -->
+            <div class="section">
+                <h3>📍 Gestores activos ahora</h3>
+                <div id="cobradoresBody"><div class="empty">Cargando...</div></div>
+            </div>
+            
+            <!-- Distribución de riesgo -->
+            <div class="section">
+                <h3>📊 Distribución de cartera</h3>
+                <div id="riesgoBody"><div class="empty">Cargando...</div></div>
+            </div>
+        </div>
+        
+        <!-- Últimos pagos -->
+        <div class="section">
+            <h3>💰 Últimos pagos de hoy</h3>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Cliente</th><th>Monto</th><th>Cobrador</th></tr></thead>
+                    <tbody id="pagosBody"><tr><td colspan="3" class="empty">Cargando...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyvDxj9r_L9pHBU08BqjxgkFMZuL6mXMIIyj7UZqRtYXZkMT8aMKQJJtE_sRUIA9tnb/exec';
+const ADMIN_KEY = 'LGX-ADMIN';
+
+function loginAdmin() {
+    const pass = document.getElementById('adminPass').value.trim();
+    if (pass === ADMIN_KEY) {
+        localStorage.setItem('lgx_admin', btoa(ADMIN_KEY + '_' + Date.now()));
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('dashApp').classList.remove('hidden');
+        cargarDashboard();
+    } else {
+        const err = document.getElementById('loginError');
+        err.style.display = 'block';
+        setTimeout(() => err.style.display = 'none', 2000);
+    }
+}
+
+function logoutAdmin() {
+    localStorage.removeItem('lgx_admin');
+    location.reload();
+}
+
+function checkSession() {
+    const s = localStorage.getItem('lgx_admin');
+    if (s) {
+        try {
+            const d = atob(s);
+            if (d.startsWith(ADMIN_KEY + '_')) {
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('dashApp').classList.remove('hidden');
+                cargarDashboard();
+                return;
+            }
+        } catch(e) {}
+    }
+}
+
+async function cargarDashboard() {
+    const hoy = new Date();
+    document.getElementById('fechaHoy').textContent = hoy.toLocaleDateString('es-MX', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+    
+    try {
+        const r = await fetch(GAS_URL + '?action=getDashboard');
+        const text = await r.text();
+        const d = JSON.parse(text);
+        
+        if (d.error) { console.error('Dashboard error:', d.error); return; }
+        
+        renderKPIs(d);
+        renderRanking(d);
+        renderPromesas(d);
+        renderCobradores(d);
+        renderRiesgo(d);
+        renderPagos(d);
+    } catch(e) {
+        console.error('Error cargando dashboard:', e);
+    }
+}
+
+function fmt(n) { return Number(n||0).toLocaleString('es-MX', {minimumFractionDigits:0, maximumFractionDigits:0}); }
+
+function renderKPIs(d) {
+    document.getElementById('kpiHoy').textContent = '$' + fmt(d.resumen.totalHoy);
+    document.getElementById('kpiHoyCount').textContent = d.resumen.cobrosHoy;
+    document.getElementById('kpiSemana').textContent = '$' + fmt(d.resumen.totalSemana);
+    document.getElementById('kpiSemanaCount').textContent = d.resumen.cobrosSemana;
+    document.getElementById('kpiMes').textContent = '$' + fmt(d.resumen.totalMes);
+    document.getElementById('kpiMesCount').textContent = d.resumen.cobrosMes;
+    document.getElementById('kpiCartera').textContent = '$' + fmt(d.cartera.totalCartera);
+    document.getElementById('kpiClientesCount').textContent = d.cartera.conSaldo;
+}
+
+function renderRanking(d) {
+    const ranking = d.cobradores.ranking || [];
+    if (ranking.length === 0) {
+        document.getElementById('rankingBody').innerHTML = '<tr><td colspan="4" class="empty">Sin cobros hoy</td></tr>';
+        return;
+    }
+    document.getElementById('rankingBody').innerHTML = ranking.filter(r => r.cobrosHoy > 0).map((r, i) => {
+        const cls = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : 'rank-n';
+        return '<tr>' +
+            '<td><span class="rank-badge ' + cls + '">' + (i+1) + '</span></td>' +
+            '<td><strong>' + esc(r.nombre) + '</strong></td>' +
+            '<td>' + r.cobrosHoy + '</td>' +
+            '<td class="amount">$' + fmt(r.cobradoHoy) + '</td>' +
+        '</tr>';
+    }).join('') || '<tr><td colspan="4" class="empty">Sin cobros hoy</td></tr>';
+}
+
+function renderPromesas(d) {
+    const prom = d.promesas.vencenHoy || [];
+    const container = document.getElementById('promesasBody');
+    
+    const stats = '<div style="display:flex;gap:16px;margin-bottom:12px;font-size:.78rem;">' +
+        '<span style="color:#22c55e">✅ Cumplidas: ' + d.promesas.cumplidas + '</span>' +
+        '<span style="color:#ef4444">❌ Incumplidas: ' + d.promesas.incumplidas + '</span>' +
+        '<span style="color:#f59e0b">⏳ Pendientes: ' + d.promesas.pendientes + '</span>' +
+    '</div>';
+    
+    if (prom.length === 0) {
+        container.innerHTML = stats + '<div class="empty">Sin promesas vencidas hoy</div>';
+        return;
+    }
+    
+    container.innerHTML = stats + prom.map(p => 
+        '<div class="promesa-item">' +
+            '<div><div class="promesa-name">' + esc(p.cliente) + '</div>' +
+            '<div class="promesa-meta">' + esc(p.cobrador) + ' · ' + p.fecha + '</div></div>' +
+            '<div class="promesa-monto">$' + fmt(p.monto) + '</div>' +
+        '</div>'
+    ).join('');
+}
+
+function renderCobradores(d) {
+    const activos = d.cobradores.activos || [];
+    const container = document.getElementById('cobradoresBody');
+    
+    if (activos.length === 0) {
+        container.innerHTML = '<div class="empty">Sin gestores activos</div>';
+        return;
+    }
+    
+    container.innerHTML = activos.map(c => {
+        const hace = timeAgo(c.ultimaActividad);
+        return '<div class="cobrador-card">' +
+            '<div class="cobrador-name"><span class="cobrador-online"></span>' + esc(c.cobrador) + '</div>' +
+            '<div class="cobrador-stats">' +
+                '<div class="cobrador-stat">Visitas: <strong>' + c.visitados + '</strong></div>' +
+                '<div class="cobrador-stat">Cobros: <strong>' + c.cobros + '</strong></div>' +
+                '<div class="cobrador-stat">Cobrado: <strong class="amount">$' + fmt(c.cobrado) + '</strong></div>' +
+                '<div class="cobrador-stat">WA: <strong>' + c.whatsapp + '</strong></div>' +
+            '</div>' +
+            '<div style="font-size:.7rem;color:#444;margin-top:6px;">Última actividad: ' + hace + '</div>' +
+        '</div>';
+    }).join('');
+}
+
+function renderRiesgo(d) {
+    const r = d.cartera.porRiesgo;
+    const total = d.cartera.totalClientes || 1;
+    const container = document.getElementById('riesgoBody');
+    
+    const pGreen = Math.round(r.probable / total * 100);
+    const pYellow = Math.round(r.muyProbable / total * 100);
+    const pOrange = Math.round(r.pocoProbable / total * 100);
+    const pRed = Math.round(r.muyDificil / total * 100);
+    
+    container.innerHTML = 
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">' +
+            '<div style="font-size:.85rem;">Clientes: <strong style="color:#fff;">' + d.cartera.totalClientes + '</strong></div>' +
+            '<div style="font-size:.85rem;">Con saldo: <strong style="color:#f59e0b;">' + d.cartera.conSaldo + '</strong></div>' +
+            '<div style="font-size:.85rem;">Liquidados: <strong style="color:#22c55e;">' + d.cartera.liquidados + '</strong></div>' +
+            '<div style="font-size:.85rem;">Convenios: <strong style="color:#3b82f6;">' + d.cartera.conveniosActivos + '</strong></div>' +
+        '</div>' +
+        '<div class="risk-bar">' +
+            '<div class="risk-green" style="width:' + pGreen + '%"></div>' +
+            '<div class="risk-yellow" style="width:' + pYellow + '%"></div>' +
+            '<div class="risk-orange" style="width:' + pOrange + '%"></div>' +
+            '<div class="risk-red" style="width:' + pRed + '%"></div>' +
+        '</div>' +
+        '<div class="risk-legend">' +
+            '<span><span class="risk-dot" style="background:#22c55e"></span> Probable ' + r.probable + '</span>' +
+            '<span><span class="risk-dot" style="background:#f59e0b"></span> Muy Probable ' + r.muyProbable + '</span>' +
+            '<span><span class="risk-dot" style="background:#f97316"></span> Poco Probable ' + r.pocoProbable + '</span>' +
+            '<span><span class="risk-dot" style="background:#ef4444"></span> Muy Difícil ' + r.muyDificil + '</span>' +
+        '</div>';
+}
+
+function renderPagos(d) {
+    const pagos = d.ultimosPagos || [];
+    if (pagos.length === 0) {
+        document.getElementById('pagosBody').innerHTML = '<tr><td colspan="3" class="empty">Sin pagos hoy</td></tr>';
+        return;
+    }
+    document.getElementById('pagosBody').innerHTML = pagos.map(p =>
+        '<tr><td>' + esc(p.cliente) + '</td><td class="amount">$' + fmt(p.monto) + '</td><td>' + esc(p.capturista) + '</td></tr>'
+    ).join('');
+}
+
+function timeAgo(dateStr) {
+    try {
+        const d = new Date(dateStr);
+        const mins = Math.floor((new Date() - d) / 60000);
+        if (mins < 1) return 'ahora';
+        if (mins < 60) return 'hace ' + mins + ' min';
+        if (mins < 1440) return 'hace ' + Math.floor(mins/60) + 'h';
+        return 'hace ' + Math.floor(mins/1440) + 'd';
+    } catch(e) { return '-'; }
+}
+
+function esc(s) { const d=document.createElement('div');d.textContent=s||'';return d.innerHTML; }
+
+// Auto-refresh cada 5 minutos
+setInterval(cargarDashboard, 300000);
+
+// Check session on load
+checkSession();
+</script>
+</body>
+</html>
