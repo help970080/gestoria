@@ -119,6 +119,7 @@ tr:hover{background:#1a1d27}
         <div class="header-right">
             <span id="fechaHoy"></span>
             <button class="btn-refresh" onclick="cargarDashboard()">🔄 Actualizar</button>
+            <button class="btn-refresh" onclick="exportarResumen()">📤 Compartir</button>
             <button class="btn-logout" onclick="logoutAdmin()">Salir</button>
         </div>
     </div>
@@ -162,7 +163,7 @@ tr:hover{background:#1a1d27}
             
             <!-- Convenios activos -->
             <div class="section">
-                <h3>📋 Convenios Activos</h3>
+                <h3>📋 Convenios Activos <button class="btn-refresh" onclick="exportarConvenios()" style="margin-left:auto;font-size:.7rem;">📤 Exportar</button></h3>
                 <div id="conveniosBody"><div class="empty">Cargando...</div></div>
             </div>
         </div>
@@ -242,6 +243,8 @@ async function cargarDashboard() {
         const d = JSON.parse(text);
         
         if (d.error) { console.error('Dashboard error:', d.error); return; }
+        
+        lastDashboardData = d;
         
         renderKPIs(d);
         renderRanking(d);
@@ -399,6 +402,105 @@ function esc(s) { const d=document.createElement('div');d.textContent=s||'';retu
 
 // Auto-refresh cada 5 minutos
 setInterval(cargarDashboard, 300000);
+
+// ═══ EXPORTAR ═══
+let lastDashboardData = null;
+
+function exportarConvenios() {
+    if (!lastDashboardData || !lastDashboardData.convenios) { alert('Carga el dashboard primero'); return; }
+    
+    const convs = lastDashboardData.convenios.detalle || [];
+    if (convs.length === 0) { alert('Sin convenios para exportar'); return; }
+    
+    const fecha = new Date().toLocaleDateString('es-MX');
+    let texto = '📋 REPORTE DE CONVENIOS - LeGaXi Asociados\n';
+    texto += '📅 Fecha: ' + fecha + '\n';
+    texto += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
+    
+    const alDia = convs.filter(c => c.alDia);
+    const atrasados = convs.filter(c => !c.alDia);
+    
+    texto += '✅ AL DÍA: ' + alDia.length + ' | ❌ ATRASADOS: ' + atrasados.length + '\n\n';
+    
+    if (atrasados.length > 0) {
+        texto += '🔴 CONVENIOS ATRASADOS:\n';
+        texto += '─────────────────────\n';
+        atrasados.forEach(function(c, i) {
+            texto += (i+1) + '. ' + c.cliente + '\n';
+            texto += '   $' + fmt(c.pagoSemanal) + '/sem × ' + c.semanas + ' sem\n';
+            texto += '   Pagado: $' + fmt(c.totalPagado) + ' de $' + fmt(c.saldoInicial) + '\n';
+            texto += '   ❌ ' + c.pagosAtrasados + ' pago(s) atrasado(s) (' + c.pagosReales + '/' + c.pagosEsperados + ')\n\n';
+        });
+    }
+    
+    if (alDia.length > 0) {
+        texto += '🟢 CONVENIOS AL DÍA:\n';
+        texto += '─────────────────────\n';
+        alDia.forEach(function(c, i) {
+            texto += (i+1) + '. ' + c.cliente + '\n';
+            texto += '   $' + fmt(c.pagoSemanal) + '/sem × ' + c.semanas + ' sem\n';
+            texto += '   Pagado: $' + fmt(c.totalPagado) + ' de $' + fmt(c.saldoInicial) + '\n';
+            texto += '   ✅ Al día (' + c.pagosReales + '/' + c.pagosEsperados + ' pagos)\n\n';
+        });
+    }
+    
+    // Intentar compartir o copiar
+    if (navigator.share) {
+        navigator.share({ title: 'Convenios LeGaXi', text: texto }).catch(function(){});
+    } else {
+        navigator.clipboard.writeText(texto).then(function() {
+            alert('📋 Reporte copiado al portapapeles. Pégalo en WhatsApp o donde quieras.');
+        }).catch(function() {
+            // Fallback
+            const ta = document.createElement('textarea');
+            ta.value = texto;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            alert('📋 Reporte copiado al portapapeles.');
+        });
+    }
+}
+
+function exportarResumen() {
+    if (!lastDashboardData) { alert('Carga el dashboard primero'); return; }
+    const d = lastDashboardData;
+    const fecha = new Date().toLocaleDateString('es-MX');
+    
+    let texto = '📊 RESUMEN DIARIO - LeGaXi Asociados\n';
+    texto += '📅 ' + fecha + '\n';
+    texto += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
+    texto += '💰 Cobrado hoy: $' + fmt(d.resumen.totalHoy) + ' (' + d.resumen.cobrosHoy + ' cobros)\n';
+    texto += '💰 Cobrado semana: $' + fmt(d.resumen.totalSemana) + ' (' + d.resumen.cobrosSemana + ' cobros)\n';
+    texto += '💰 Cobrado mes: $' + fmt(d.resumen.totalMes) + ' (' + d.resumen.cobrosMes + ' cobros)\n\n';
+    texto += '📋 Convenios: ' + (d.convenios ? d.convenios.activos : 0) + ' activos\n';
+    texto += '👥 Clientes: ' + d.cartera.totalClientes + ' total, ' + d.cartera.conSaldo + ' con saldo\n\n';
+    
+    const ranking = d.cobradores.ranking || [];
+    if (ranking.filter(r => r.cobrosHoy > 0).length > 0) {
+        texto += '🏆 RANKING HOY:\n';
+        ranking.filter(r => r.cobrosHoy > 0).forEach(function(r, i) {
+            texto += (i+1) + '. ' + r.nombre + ' — $' + fmt(r.cobradoHoy) + ' (' + r.cobrosHoy + ' cobros)\n';
+        });
+    }
+    
+    if (navigator.share) {
+        navigator.share({ title: 'Resumen LeGaXi', text: texto }).catch(function(){});
+    } else {
+        navigator.clipboard.writeText(texto).then(function() {
+            alert('📋 Resumen copiado al portapapeles.');
+        }).catch(function() {
+            const ta = document.createElement('textarea');
+            ta.value = texto;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            alert('📋 Resumen copiado.');
+        });
+    }
+}
 
 // Check session on load
 checkSession();
