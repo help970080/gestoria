@@ -160,10 +160,10 @@ tr:hover{background:#1a1d27}
                 </div>
             </div>
             
-            <!-- Promesas vencidas -->
+            <!-- Convenios activos -->
             <div class="section">
-                <h3>⚠️ Promesas que vencen hoy</h3>
-                <div id="promesasBody"><div class="empty">Cargando...</div></div>
+                <h3>📋 Convenios Activos</h3>
+                <div id="conveniosBody"><div class="empty">Cargando...</div></div>
             </div>
         </div>
         
@@ -195,7 +195,7 @@ tr:hover{background:#1a1d27}
 </div>
 
 <script>
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbxspRYZjGo1qIBbFPACm7joxg76oHcPQeCzYi9aStAA_b2o7Kk1mo4soJrxDEu5V5Xb/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbz0yrrfE4aiqoXEo0yOXXnolia1M3vmHubQC_XPlAQq1et0e4JYSrBwo7zE5_-HBsQ/exec';
 const ADMIN_KEY = 'LGX-ADMIN';
 
 function loginAdmin() {
@@ -245,7 +245,7 @@ async function cargarDashboard() {
         
         renderKPIs(d);
         renderRanking(d);
-        renderPromesas(d);
+        renderConvenios(d);
         renderCobradores(d);
         renderRiesgo(d);
         renderPagos(d);
@@ -284,28 +284,38 @@ function renderRanking(d) {
     }).join('') || '<tr><td colspan="4" class="empty">Sin cobros hoy</td></tr>';
 }
 
-function renderPromesas(d) {
-    const prom = d.promesas.vencenHoy || [];
-    const container = document.getElementById('promesasBody');
+function renderConvenios(d) {
+    const convs = (d.convenios && d.convenios.detalle) || [];
+    const container = document.getElementById('conveniosBody');
+    
+    const activos = d.convenios ? d.convenios.activos : 0;
+    const alDia = convs.filter(c => c.alDia).length;
+    const atrasados = convs.filter(c => !c.alDia).length;
     
     const stats = '<div style="display:flex;gap:16px;margin-bottom:12px;font-size:.78rem;">' +
-        '<span style="color:#22c55e">✅ Cumplidas: ' + d.promesas.cumplidas + '</span>' +
-        '<span style="color:#ef4444">❌ Incumplidas: ' + d.promesas.incumplidas + '</span>' +
-        '<span style="color:#f59e0b">⏳ Pendientes: ' + d.promesas.pendientes + '</span>' +
+        '<span style="color:#3b82f6">📋 Activos: ' + activos + '</span>' +
+        '<span style="color:#22c55e">✅ Al día: ' + alDia + '</span>' +
+        '<span style="color:#ef4444">❌ Atrasados: ' + atrasados + '</span>' +
     '</div>';
     
-    if (prom.length === 0) {
-        container.innerHTML = stats + '<div class="empty">Sin promesas vencidas hoy</div>';
+    if (convs.length === 0) {
+        container.innerHTML = stats + '<div class="empty">Sin convenios activos</div>';
         return;
     }
     
-    container.innerHTML = stats + prom.map(p => 
-        '<div class="promesa-item">' +
-            '<div><div class="promesa-name">' + esc(p.cliente) + '</div>' +
-            '<div class="promesa-meta">' + esc(p.cobrador) + ' · ' + p.fecha + '</div></div>' +
-            '<div class="promesa-monto">$' + fmt(p.monto) + '</div>' +
-        '</div>'
-    ).join('');
+    container.innerHTML = stats + convs.map(function(c) {
+        const statusColor = c.alDia ? '#22c55e' : '#ef4444';
+        const statusIcon = c.alDia ? '✅' : '❌';
+        const statusText = c.alDia ? 'Al día' : c.pagosAtrasados + ' pago' + (c.pagosAtrasados > 1 ? 's' : '') + ' atrasado' + (c.pagosAtrasados > 1 ? 's' : '');
+        return '<div class="promesa-item">' +
+            '<div>' +
+                '<div class="promesa-name">' + esc(c.cliente) + '</div>' +
+                '<div class="promesa-meta">$' + fmt(c.pagoSemanal) + '/sem × ' + c.semanas + ' sem · Pagado: $' + fmt(c.totalPagado) + ' de $' + fmt(c.saldoInicial) + '</div>' +
+                '<div style="font-size:.7rem;margin-top:2px;color:' + statusColor + ';font-weight:600;">' + statusIcon + ' ' + statusText + ' (' + c.pagosReales + '/' + c.pagosEsperados + ' pagos)</div>' +
+            '</div>' +
+            '<div class="promesa-monto" style="color:' + statusColor + '">$' + fmt(c.pagoSemanal) + '</div>' +
+        '</div>';
+    }).join('');
 }
 
 function renderCobradores(d) {
