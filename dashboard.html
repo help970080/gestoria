@@ -152,7 +152,12 @@ tr:hover{background:#1a1d27}
         <div class="grid-2">
             <!-- Ranking Cobradores -->
             <div class="section">
-                <h3>🏆 Ranking Cobradores (hoy)</h3>
+                <h3>🏆 Cobranza por Gestor <button class="btn-refresh" onclick="exportarRankingSemanal()" style="margin-left:auto;font-size:.7rem;">📤 Exportar</button></h3>
+                <div style="display:flex;gap:8px;margin-bottom:10px;">
+                    <button class="btn-refresh" id="btnRankHoy" onclick="toggleRanking('hoy')" style="background:#f59e0b;color:#000;">Hoy</button>
+                    <button class="btn-refresh" id="btnRankSemana" onclick="toggleRanking('semana')">Semana</button>
+                    <button class="btn-refresh" id="btnRankMes" onclick="toggleRanking('mes')">Mes</button>
+                </div>
                 <div class="table-container">
                     <table>
                         <thead><tr><th>#</th><th>Cobrador</th><th>Cobros</th><th>Cobrado</th></tr></thead>
@@ -196,7 +201,7 @@ tr:hover{background:#1a1d27}
 </div>
 
 <script>
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbyjNzpsVEdLrNitrrbfdjiy-Y8C8Ie7YFg-w2AGKfQgxnX7dPN3hEH4mL46xdgSAszH/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxOg6OvSVB4Ky2It9tL9-X8-Tqp_wuhUBc9Y8hz2zlDpQ2PlPSi_0pSV303v07VguM/exec';
 const ADMIN_KEY = 'LGX-ADMIN';
 
 function loginAdmin() {
@@ -270,21 +275,75 @@ function renderKPIs(d) {
     document.getElementById('kpiClientesCount').textContent = d.cartera.conSaldo;
 }
 
+var currentRankingView = 'hoy';
+
+function toggleRanking(view) {
+    currentRankingView = view;
+    document.getElementById('btnRankHoy').style.background = view==='hoy' ? '#f59e0b' : '#1a1d27';
+    document.getElementById('btnRankHoy').style.color = view==='hoy' ? '#000' : '#f59e0b';
+    document.getElementById('btnRankSemana').style.background = view==='semana' ? '#f59e0b' : '#1a1d27';
+    document.getElementById('btnRankSemana').style.color = view==='semana' ? '#000' : '#f59e0b';
+    document.getElementById('btnRankMes').style.background = view==='mes' ? '#f59e0b' : '#1a1d27';
+    document.getElementById('btnRankMes').style.color = view==='mes' ? '#000' : '#f59e0b';
+    if (lastDashboardData) renderRanking(lastDashboardData);
+}
+
 function renderRanking(d) {
     const ranking = d.cobradores.ranking || [];
-    if (ranking.length === 0) {
-        document.getElementById('rankingBody').innerHTML = '<tr><td colspan="4" class="empty">Sin cobros hoy</td></tr>';
+    const view = currentRankingView;
+    
+    var filtered = ranking.map(function(r) {
+        var cobros = view==='hoy' ? r.cobrosHoy : view==='semana' ? r.cobrosSemana : r.cobrosMes;
+        var cobrado = view==='hoy' ? r.cobradoHoy : view==='semana' ? r.cobradoSemana : r.cobradoMes;
+        return { nombre: r.nombre, cobros: cobros || 0, cobrado: cobrado || 0 };
+    }).filter(function(r) { return r.cobros > 0; });
+    
+    filtered.sort(function(a, b) { return b.cobrado - a.cobrado; });
+    
+    if (filtered.length === 0) {
+        document.getElementById('rankingBody').innerHTML = '<tr><td colspan="4" class="empty">Sin cobros ' + (view==='hoy'?'hoy':'esta '+view) + '</td></tr>';
         return;
     }
-    document.getElementById('rankingBody').innerHTML = ranking.filter(r => r.cobrosHoy > 0).map((r, i) => {
-        const cls = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : 'rank-n';
+    document.getElementById('rankingBody').innerHTML = filtered.map(function(r, i) {
+        var cls = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : 'rank-n';
         return '<tr>' +
             '<td><span class="rank-badge ' + cls + '">' + (i+1) + '</span></td>' +
             '<td><strong>' + esc(r.nombre) + '</strong></td>' +
-            '<td>' + r.cobrosHoy + '</td>' +
-            '<td class="amount">$' + fmt(r.cobradoHoy) + '</td>' +
+            '<td>' + r.cobros + '</td>' +
+            '<td class="amount">$' + fmt(r.cobrado) + '</td>' +
         '</tr>';
-    }).join('') || '<tr><td colspan="4" class="empty">Sin cobros hoy</td></tr>';
+    }).join('');
+}
+
+function exportarRankingSemanal() {
+    if (!lastDashboardData) { alert('Carga el dashboard primero'); return; }
+    var d = lastDashboardData;
+    var ranking = d.cobradores.ranking || [];
+    var fecha = new Date().toLocaleDateString('es-MX');
+    
+    var texto = '🏆 COBRANZA POR GESTOR - LeGaXi\n';
+    texto += '📅 Semana del ' + fecha + '\n';
+    texto += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
+    
+    var semanal = ranking.filter(function(r) { return (r.cobrosSemana||0) > 0; });
+    semanal.sort(function(a, b) { return (b.cobradoSemana||0) - (a.cobradoSemana||0); });
+    
+    if (semanal.length === 0) {
+        texto += 'Sin cobros esta semana\n';
+    } else {
+        var totalSem = 0;
+        semanal.forEach(function(r, i) {
+            texto += (i+1) + '. ' + r.nombre + '\n';
+            texto += '   Hoy: $' + fmt(r.cobradoHoy) + ' (' + (r.cobrosHoy||0) + ' cobros)\n';
+            texto += '   Semana: $' + fmt(r.cobradoSemana) + ' (' + (r.cobrosSemana||0) + ' cobros)\n';
+            texto += '   Mes: $' + fmt(r.cobradoMes) + ' (' + (r.cobrosMes||0) + ' cobros)\n\n';
+            totalSem += (r.cobradoSemana||0);
+        });
+        texto += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
+        texto += 'TOTAL SEMANA: $' + fmt(totalSem) + '\n';
+    }
+    
+    copiarAlPortapapeles(texto);
 }
 
 function renderConvenios(d) {
