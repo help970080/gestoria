@@ -2347,6 +2347,22 @@
         
         function initClients() {
             const activeClients = getActiveClients();
+            
+            // NUEVO v2.3: Construir mapa de ubicaciones desde la nube
+            const ubicacionesMap = {};
+            if (cloudData.ubicaciones && Array.isArray(cloudData.ubicaciones)) {
+                cloudData.ubicaciones.forEach(u => {
+                    const phoneU = String(u['Teléfono'] || u.telefono || '').replace(/[^0-9]/g, '');
+                    const keyU = phoneU.length > 10 ? phoneU.slice(-10) : phoneU;
+                    const latU = Number(u.Latitud || u.lat);
+                    const lngU = Number(u.Longitud || u.lng);
+                    if (keyU && latU && lngU && !isNaN(latU) && !isNaN(lngU)) {
+                        ubicacionesMap[keyU] = { lat: latU, lng: lngU };
+                    }
+                });
+                console.log('Ubicaciones cargadas de la nube:', Object.keys(ubicacionesMap).length);
+            }
+            
             processedClients = activeClients.map((c, index) => {
                 // Usar ID único si existe, sino teléfono
                 const clientKey = c.id || c.Teléfono;
@@ -2379,7 +2395,7 @@
                     Saldo: saldoActual,
                     TotalPagado: totalPagado,
                     distance: null,
-                    savedCoords: savedLocations[phone] || savedLocations[folio] || null,
+                    savedCoords: ubicacionesMap[normalizarTelefono(phone)] || savedLocations[phone] || savedLocations[folio] || null,
                     paymentHistory: historialPagos
                 };
             });
@@ -2590,20 +2606,27 @@
             }
         }
         
-        function saveLocation(phone) {
+        async function saveLocation(phone) {
             if (!navigator.geolocation) {
                 showToast('❌ GPS no disponible');
                 return;
             }
             
-            showLoader('Guardando ubicación...');
+            showLoader('Obteniendo ubicación...');
             
             navigator.geolocation.getCurrentPosition(
-                pos => {
+                async pos => {
                     const coords = {lat: pos.coords.latitude, lng: pos.coords.longitude};
+                    
+                    // 1. Guardar local (respuesta inmediata)
                     savedLocations[phone] = coords;
                     localStorage.setItem('clientLocations', JSON.stringify(savedLocations));
                     
+                    // 2. Buscar el cliente para tener nombre
+                    const cliente = processedClients.find(c => c.Teléfono === phone);
+                    const nombreCliente = cliente ? cliente.Cliente : '';
+                    
+                    // 3. Actualizar en memoria
                     processedClients = processedClients.map(c => {
                         if (c.Teléfono === phone) {
                             const dist = myLat ? calcDist(myLat, myLng, coords.lat, coords.lng) : null;
@@ -2612,20 +2635,59 @@
                         return c;
                     });
                     
-                    // Re-ordenar si el modo cercanía está activo
+                    // 4. Actualizar cloudData.ubicaciones local para que sobreviva al próximo sync
+                    if (!cloudData.ubicaciones) cloudData.ubicaciones = [];
+                    const normPhone = normalizarTelefono(phone);
+                    const idxExistente = cloudData.ubicaciones.findIndex(u => {
+                        const uPhone = normalizarTelefono(u['Teléfono'] || u.telefono || '');
+                        return uPhone === normPhone;
+                    });
+                    const nuevaUbic = {
+                        'Teléfono': normPhone,
+                        'Latitud': coords.lat,
+                        'Longitud': coords.lng,
+                        'Cliente': nombreCliente,
+                        'GuardadoPor': lastCapturista || '',
+                        'Timestamp': new Date().toISOString()
+                    };
+                    if (idxExistente >= 0) {
+                        cloudData.ubicaciones[idxExistente] = nuevaUbic;
+                    } else {
+                        cloudData.ubicaciones.push(nuevaUbic);
+                    }
+                    localStorage.setItem('cloudData', JSON.stringify(cloudData));
+                    
+                    // 5. Re-ordenar si el modo cercanía está activo
                     if (autoSortByCercania) {
                         calcularDistanciasYOrdenar();
                     }
                     
-                    hideLoader();
-                    showToast('✅ Ubicación guardada');
                     render(filterCurrent());
+                    showLoader('Sincronizando a la nube...');
+                    
+                    // 6. Enviar a Google Sheets (persistencia real)
+                    const syncOk = await syncToCloud('guardarUbicacion', {
+                        phone: phone,
+                        lat: coords.lat,
+                        lng: coords.lng,
+                        cliente: nombreCliente,
+                        guardadoPor: lastCapturista || ''
+                    });
+                    
+                    hideLoader();
+                    
+                    if (syncOk) {
+                        showToast('✅ Ubicación guardada en la nube');
+                    } else {
+                        showToast('⚠️ Guardada local, se sincronizará después');
+                    }
                 },
                 err => {
                     hideLoader();
-                    showToast('❌ Error al guardar');
+                    showToast('❌ Error al obtener GPS: ' + err.message);
+                    console.error('GPS error:', err);
                 },
-                {enableHighAccuracy: true, timeout: 10000}
+                {enableHighAccuracy: true, timeout: 15000, maximumAge: 0}
             );
         }
         
