@@ -2428,11 +2428,11 @@
             // Filtro por búsqueda (ahora incluye Folio)
             if (q) {
                 list = list.filter(c => 
-                    (c.Cliente && c.Cliente.toLowerCase().includes(q)) ||
-                    String(c.Teléfono || '').includes(q) ||
-                    (c.Dirección && c.Dirección.toLowerCase().includes(q)) ||
-                    (c.Promotor && c.Promotor.toLowerCase().includes(q)) ||
-                    (c.Folio && c.Folio.toLowerCase().includes(q))
+                    (c.Cliente && String(c.Cliente).toLowerCase().includes(q)) ||
+                    String(c.Teléfono || '').toLowerCase().includes(q) ||
+                    (c.Dirección && String(c.Dirección).toLowerCase().includes(q)) ||
+                    (c.Promotor && String(c.Promotor).toLowerCase().includes(q)) ||
+                    (c.Folio && String(c.Folio).toLowerCase().includes(q))
                 );
             }
             
