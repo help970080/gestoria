@@ -2339,42 +2339,13 @@
             // Si tenemos datos de la nube con clientes, usarlos
             if (useCloudData && cloudData.clientes && cloudData.clientes.length > 0) {
                 console.log('Usando datos de la nube:', cloudData.clientes.length, 'clientes');
-                
-                // FIX 2026-05-23: preservar SaldoOriginal histórico desde cache local.
-                // Si Sheets no devuelve SaldoOriginal (sólo Saldo), antes hacíamos fallback
-                // a Saldo - pero Saldo cambia con cada pago, lo cual rompía la fórmula
-                // (Saldo = SaldoOriginal - totalPagado) en initClients.
-                let saldosOriginalesCache = {};
-                try {
-                    const cached = localStorage.getItem('cloudData');
-                    if (cached) {
-                        const cd = JSON.parse(cached);
-                        (cd.clientes || []).forEach(prev => {
-                            const k = prev.id || prev['Teléfono'];
-                            if (k && (prev.SaldoOriginal != null)) {
-                                const v = parseFloat(prev.SaldoOriginal);
-                                if (!isNaN(v) && v > 0) saldosOriginalesCache[k] = v;
-                            }
-                        });
-                    }
-                } catch(e) {}
-                
-                return cloudData.clientes.map(c => {
-                    const key = c.id || c['Teléfono'];
-                    const saldoSheets = parseFloat(c.Saldo) || 0;
-                    const saldoOriginalRaw = parseFloat(c.SaldoOriginal);
-                    // Prioridad: 1) SaldoOriginal de la nube si viene >0, 2) cache local, 3) Saldo actual (primera carga)
-                    let saldoOriginalFinal = (!isNaN(saldoOriginalRaw) && saldoOriginalRaw > 0)
-                        ? saldoOriginalRaw
-                        : (saldosOriginalesCache[key] || saldoSheets);
-                    return {
-                        ...c,
-                        Saldo: saldoSheets,
-                        SaldoOriginal: saldoOriginalFinal,
-                        Tarifa: parseFloat(c.Tarifa) || 0,
-                        'Días Atraso': parseInt(c['Días Atraso']) || 0
-                    };
-                });
+                return cloudData.clientes.map(c => ({
+                    ...c,
+                    Saldo: parseFloat(c.Saldo) || 0,
+                    SaldoOriginal: parseFloat(c.SaldoOriginal) || parseFloat(c.Saldo) || 0,
+                    Tarifa: parseFloat(c.Tarifa) || 0,
+                    'Días Atraso': parseInt(c['Días Atraso']) || 0
+                }));
             }
             
             // Fallback a datos locales (customClients + DATA_ORIGINAL)
@@ -2439,23 +2410,21 @@
                 const folio = c.Folio || `LGX-${String(index + 1).padStart(4, '0')}`;
                 
                 // El saldo original es el que viene del Excel/importación
-                // FIX 2026-05-23: SaldoOriginal debe preservarse SIEMPRE; nunca caer en Saldo
-                // (porque tras un pago, Saldo < SaldoOriginal y eso "pisaba" el original).
                 const saldoOriginal = parseFloat(c.SaldoOriginal) || parseFloat(c.Saldo) || 0;
                 
+                // Saldo actual: usar el de Sheets directamente (ya viene actualizado por el GAS)
                 const normalizedPhone = normalizarTelefono(phone);
                 const normalizedId = normalizarTelefono(clientKey);
                 const historialPagos = payments[normalizedPhone] || payments[normalizedId] || payments[clientKey] || payments[phone] || payments[folio] || [];
                 
-                // FIX 2026-05-23: SALDO SIEMPRE = SaldoOriginal - SUMA DE PAGOS REGISTRADOS.
-                // Antes la lógica era: "si Sheets tiene Saldo > 0, usarlo". Esto causaba
-                // que al sincronizar tras registrar un abono, el saldo "regresara" al valor
-                // de la columna Saldo del Sheet (que el GAS no recalcula al instante),
-                // borrando visualmente los pagos recién hechos.
-                // Ahora los pagos (locales + nube ya mergeados en saldoAjustes durante
-                // initialSync) son la única fuente de verdad para descontar del saldo.
+                // Si Sheets tiene columna Saldo con valor real, usarla
+                // Si no (Saldo=0 o igual a SaldoOriginal), calcular localmente como fallback
+                const saldoSheets = parseFloat(c.Saldo) || 0;
                 const totalPagado = saldoAjustes[normalizedPhone] || saldoAjustes[normalizedId] || saldoAjustes[clientKey] || saldoAjustes[phone] || saldoAjustes[folio] || 0;
-                const saldoActual = Math.max(0, saldoOriginal - totalPagado);
+                const saldoCalculado = Math.max(0, saldoOriginal - totalPagado);
+                
+                // Sheets es la fuente de verdad. Si tiene saldo, usarlo.
+                const saldoActual = saldoSheets > 0 ? saldoSheets : saldoCalculado;
                 
                 return {
                     ...c,
@@ -3323,8 +3292,10 @@ _Conserve esta notificación como comprobante_`;
             localStorage.setItem('clientPayments', JSON.stringify(payments));
             
             // Sincronizar pago a la nube
+            // FIX 2026-05-24: Identificación SOLO por teléfono (10 dígitos).
+            // Sin clienteId random. El GAS buscará al cliente por teléfono.
             const syncOk = await syncToCloud('addPago', { 
-                data: { ...pagoData, Teléfono: phone, clienteId: clientKey, cliente: currentPayClient.name }
+                data: { ...pagoData, Teléfono: normalizedPhone, telefono: normalizedPhone, cliente: currentPayClient.name }
             });
             
             if (!syncOk) {
@@ -5394,66 +5365,101 @@ _LeGaXi Asociados_`;
             customClients = [];
             let added = 0;
             
+            // FIX 2026-05-24: Consolidación por teléfono.
+            // Un teléfono = un cliente = un saldo. Si hay duplicados en el Excel
+            // (cliente con varios créditos), se SUMAN saldos en una sola fila.
+            // El id del cliente es el teléfono mismo (10 dígitos). Sin ids random.
+            //
+            // Para clientes SIN teléfono: se genera un código 99XXXXXXXX (10 dígitos,
+            // prefijo 99 que no existe como lada real en México) consecutivo.
+            // Así se comportan igual que cualquier otro cliente, se pueden cobrar
+            // desde la app y aparecen normales en la nube.
+            const clientesPorTel = {}; // tel10 → registro consolidado
+            let sinTelCount = 0;
+            
             data.forEach((row, index) => {
-                // Obtener teléfono o generar ID único si no tiene
-                let telefono = getValue(row, 'Teléfono');
-                if (telefono) {
-                    telefono = String(telefono).replace(/[^0-9+\s]/g, '').trim();
+                let telefonoRaw = getValue(row, 'Teléfono');
+                let telefono = '';
+                if (telefonoRaw) {
+                    telefono = String(telefonoRaw).replace(/[^0-9]/g, '');
+                    if (telefono.length > 10) telefono = telefono.slice(-10);
                 }
                 
-                // Si no tiene teléfono, generar ID único basado en nombre + índice
-                if (!telefono || telefono.length < 7) {
-                    const nombreCliente = getValue(row, 'Cliente') || 'Cliente';
-                    telefono = 'SIN-TEL-' + index + '-' + Date.now().toString(36);
+                // Si no tiene teléfono válido, generar código 99XXXXXXXX consecutivo
+                let telKey;
+                let esFalso = false;
+                if (!telefono || telefono.length < 10) {
+                    sinTelCount++;
+                    // 99 + 8 dígitos del contador con padding (99 + 00000001 = 9900000001)
+                    telKey = '99' + String(sinTelCount).padStart(8, '0');
+                    esFalso = true;
+                } else {
+                    telKey = telefono;
                 }
                 
-                // Generar ID único para cada registro (permite duplicados de teléfono)
-                const uniqueId = telefono + '-' + index + '-' + Math.random().toString(36).substr(2, 5);
-                
-                // Obtener saldo y tarifa directamente
-                let saldo = getValue(row, 'Saldo');
-                let tarifa = getValue(row, 'Tarifa');
-                
-                // Convertir a número
-                saldo = parseFloat(saldo) || 0;
-                tarifa = parseFloat(tarifa) || 0;
-                
-                // Debug primeras filas
-                if (index < 3) {
-                    console.log(`Fila ${index}: Saldo=${saldo}, Tarifa=${tarifa}, Cliente=${getValue(row, 'Cliente')}`);
-                }
-                
-                // Determinar riesgo basado en días de atraso
+                const saldo = parseFloat(getValue(row, 'Saldo')) || 0;
+                const tarifa = parseFloat(getValue(row, 'Tarifa')) || 0;
                 const diasAtraso = parseInt(getValue(row, 'Días Atraso')) || 0;
+                
                 let riesgo = '🟢 PROBABLE';
                 if (diasAtraso > 90) riesgo = '🔴 MUY ALTO';
                 else if (diasAtraso > 60) riesgo = '🟠 ALTO';
                 else if (diasAtraso > 30) riesgo = '🟡 MEDIO';
                 
-                customClients.push({
-                    id: uniqueId,
-                    Riesgo: getValue(row, 'Riesgo') || riesgo,
-                    Promotor: getValue(row, 'Promotor') || 'Importado',
-                    Cliente: getValue(row, 'Cliente') || 'Sin nombre',
-                    Teléfono: telefono,
-                    TelefonoOriginal: getValue(row, 'Teléfono') || '',
-                    Dirección: getValue(row, 'Dirección') || '',
-                    'Días Atraso': diasAtraso,
-                    Saldo: saldo,
-                    SaldoOriginal: saldo,
-                    Tarifa: tarifa,
-                    'Última Trans.': getValue(row, 'Última Trans.') || new Date().toISOString().split('T')[0],
-                    Frecuencia: getValue(row, 'Frecuencia') || 'Semanal',
-                    Referencia: getValue(row, 'Referencia') || '',
-                    Conyuge: getValue(row, 'Conyuge') || '',
-                    FechaTermino: getValue(row, 'FechaTermino') || ''
-                });
+                if (clientesPorTel[telKey]) {
+                    // Cliente con varios créditos: SUMAR saldos y tomar el peor riesgo
+                    const existente = clientesPorTel[telKey];
+                    existente.Saldo += saldo;
+                    existente.SaldoOriginal += saldo;
+                    existente.Tarifa += tarifa;
+                    if (diasAtraso > existente['Días Atraso']) {
+                        existente['Días Atraso'] = diasAtraso;
+                        existente.Riesgo = getValue(row, 'Riesgo') || riesgo;
+                    }
+                    const folioNuevo = getValue(row, 'Folio') || '';
+                    if (folioNuevo && existente.Folio.indexOf(folioNuevo) < 0) {
+                        existente.Folio = existente.Folio ? existente.Folio + ' / ' + folioNuevo : folioNuevo;
+                    }
+                    existente._creditosConsolidados = (existente._creditosConsolidados || 1) + 1;
+                } else {
+                    clientesPorTel[telKey] = {
+                        id: telKey, // ← id = teléfono real o 99XXXXXXXX. Siempre 10 dígitos.
+                        Riesgo: getValue(row, 'Riesgo') || riesgo,
+                        Promotor: getValue(row, 'Promotor') || 'Importado',
+                        Cliente: getValue(row, 'Cliente') || 'Sin nombre',
+                        Teléfono: telKey, // siempre 10 dígitos
+                        TelefonoOriginal: getValue(row, 'Teléfono') || (esFalso ? '(sin teléfono)' : ''),
+                        Dirección: getValue(row, 'Dirección') || '',
+                        'Días Atraso': diasAtraso,
+                        Saldo: saldo,
+                        SaldoOriginal: saldo,
+                        Tarifa: tarifa,
+                        'Última Trans.': getValue(row, 'Última Trans.') || new Date().toISOString().split('T')[0],
+                        Frecuencia: getValue(row, 'Frecuencia') || 'Semanal',
+                        Referencia: getValue(row, 'Referencia') || '',
+                        Conyuge: getValue(row, 'Conyuge') || '',
+                        FechaTermino: getValue(row, 'FechaTermino') || '',
+                        Folio: getValue(row, 'Folio') || '',
+                        _creditosConsolidados: 1,
+                        _telefonoFalso: esFalso
+                    };
+                }
                 added++;
             });
             
-            // Debug: verificar que los saldos se guardaron
-            console.log('Total clientes importados:', customClients.length);
-            console.log('Muestra de saldos:', customClients.slice(0, 5).map(c => c.Saldo));
+            // Volcar el mapa consolidado al array
+            customClients = Object.values(clientesPorTel);
+            
+            // Debug
+            const consolidados = customClients.filter(c => c._creditosConsolidados > 1);
+            const conTelFalso = customClients.filter(c => c._telefonoFalso);
+            console.log('Filas leídas:', added, '| Clientes únicos:', customClients.length, '| Consolidados (varios créditos):', consolidados.length, '| Con código 99XXXXXXXX:', conTelFalso.length);
+            if (consolidados.length > 0) {
+                console.log('Ejemplos consolidados:', consolidados.slice(0, 5).map(c => c.Cliente + ' tel=' + c.Teléfono + ' créditos=' + c._creditosConsolidados + ' saldo=$' + c.Saldo));
+            }
+            if (conTelFalso.length > 0) {
+                console.log('Ejemplos sin tel real:', conTelFalso.slice(0, 5).map(c => c.Cliente + ' → ' + c.Teléfono));
+            }
             
             localStorage.setItem('customClients', JSON.stringify(customClients));
             initClients();
