@@ -2339,13 +2339,42 @@
             // Si tenemos datos de la nube con clientes, usarlos
             if (useCloudData && cloudData.clientes && cloudData.clientes.length > 0) {
                 console.log('Usando datos de la nube:', cloudData.clientes.length, 'clientes');
-                return cloudData.clientes.map(c => ({
-                    ...c,
-                    Saldo: parseFloat(c.Saldo) || 0,
-                    SaldoOriginal: parseFloat(c.SaldoOriginal) || parseFloat(c.Saldo) || 0,
-                    Tarifa: parseFloat(c.Tarifa) || 0,
-                    'Días Atraso': parseInt(c['Días Atraso']) || 0
-                }));
+                
+                // FIX 2026-05-23: preservar SaldoOriginal histórico desde cache local.
+                // Si Sheets no devuelve SaldoOriginal (sólo Saldo), antes hacíamos fallback
+                // a Saldo - pero Saldo cambia con cada pago, lo cual rompía la fórmula
+                // (Saldo = SaldoOriginal - totalPagado) en initClients.
+                let saldosOriginalesCache = {};
+                try {
+                    const cached = localStorage.getItem('cloudData');
+                    if (cached) {
+                        const cd = JSON.parse(cached);
+                        (cd.clientes || []).forEach(prev => {
+                            const k = prev.id || prev['Teléfono'];
+                            if (k && (prev.SaldoOriginal != null)) {
+                                const v = parseFloat(prev.SaldoOriginal);
+                                if (!isNaN(v) && v > 0) saldosOriginalesCache[k] = v;
+                            }
+                        });
+                    }
+                } catch(e) {}
+                
+                return cloudData.clientes.map(c => {
+                    const key = c.id || c['Teléfono'];
+                    const saldoSheets = parseFloat(c.Saldo) || 0;
+                    const saldoOriginalRaw = parseFloat(c.SaldoOriginal);
+                    // Prioridad: 1) SaldoOriginal de la nube si viene >0, 2) cache local, 3) Saldo actual (primera carga)
+                    let saldoOriginalFinal = (!isNaN(saldoOriginalRaw) && saldoOriginalRaw > 0)
+                        ? saldoOriginalRaw
+                        : (saldosOriginalesCache[key] || saldoSheets);
+                    return {
+                        ...c,
+                        Saldo: saldoSheets,
+                        SaldoOriginal: saldoOriginalFinal,
+                        Tarifa: parseFloat(c.Tarifa) || 0,
+                        'Días Atraso': parseInt(c['Días Atraso']) || 0
+                    };
+                });
             }
             
             // Fallback a datos locales (customClients + DATA_ORIGINAL)
@@ -2410,21 +2439,23 @@
                 const folio = c.Folio || `LGX-${String(index + 1).padStart(4, '0')}`;
                 
                 // El saldo original es el que viene del Excel/importación
+                // FIX 2026-05-23: SaldoOriginal debe preservarse SIEMPRE; nunca caer en Saldo
+                // (porque tras un pago, Saldo < SaldoOriginal y eso "pisaba" el original).
                 const saldoOriginal = parseFloat(c.SaldoOriginal) || parseFloat(c.Saldo) || 0;
                 
-                // Saldo actual: usar el de Sheets directamente (ya viene actualizado por el GAS)
                 const normalizedPhone = normalizarTelefono(phone);
                 const normalizedId = normalizarTelefono(clientKey);
                 const historialPagos = payments[normalizedPhone] || payments[normalizedId] || payments[clientKey] || payments[phone] || payments[folio] || [];
                 
-                // Si Sheets tiene columna Saldo con valor real, usarla
-                // Si no (Saldo=0 o igual a SaldoOriginal), calcular localmente como fallback
-                const saldoSheets = parseFloat(c.Saldo) || 0;
+                // FIX 2026-05-23: SALDO SIEMPRE = SaldoOriginal - SUMA DE PAGOS REGISTRADOS.
+                // Antes la lógica era: "si Sheets tiene Saldo > 0, usarlo". Esto causaba
+                // que al sincronizar tras registrar un abono, el saldo "regresara" al valor
+                // de la columna Saldo del Sheet (que el GAS no recalcula al instante),
+                // borrando visualmente los pagos recién hechos.
+                // Ahora los pagos (locales + nube ya mergeados en saldoAjustes durante
+                // initialSync) son la única fuente de verdad para descontar del saldo.
                 const totalPagado = saldoAjustes[normalizedPhone] || saldoAjustes[normalizedId] || saldoAjustes[clientKey] || saldoAjustes[phone] || saldoAjustes[folio] || 0;
-                const saldoCalculado = Math.max(0, saldoOriginal - totalPagado);
-                
-                // Sheets es la fuente de verdad. Si tiene saldo, usarlo.
-                const saldoActual = saldoSheets > 0 ? saldoSheets : saldoCalculado;
+                const saldoActual = Math.max(0, saldoOriginal - totalPagado);
                 
                 return {
                     ...c,
