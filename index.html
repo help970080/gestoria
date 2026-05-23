@@ -1952,7 +1952,24 @@
         let isOnline = navigator.onLine;
         let syncPending = JSON.parse(localStorage.getItem('syncPending') || '[]');
         let lastSyncTime = localStorage.getItem('lastSyncTime') || null;
-        let cloudData = { clientes: [], pagos: [], convenios: {} };
+        let cloudData = { clientes: [], pagos: [], convenios: {}, ubicaciones: [] };
+        
+        // FIX 2026-05: helper que garantiza que cloudData tenga TODOS sus
+        // campos al restaurarse desde el cache. Antes, si el cache se guardó
+        // en una sesión vieja, el spread sobrescribía cloudData sin "ubicaciones"
+        // y se perdían visualmente aunque siguieran en Sheets.
+        function restaurarCloudDataDelCache(parsed) {
+            return {
+                clientes:    Array.isArray(parsed.clientes)    ? parsed.clientes    : [],
+                pagos:       Array.isArray(parsed.pagos)       ? parsed.pagos       : [],
+                convenios:   parsed.convenios                  || {},
+                ubicaciones: Array.isArray(parsed.ubicaciones) ? parsed.ubicaciones : [],
+                // preservar cualquier campo extra que pueda existir
+                ...parsed,
+                // pero forzar los críticos (por si el ...parsed los puso undefined)
+                ...(Array.isArray(parsed.ubicaciones) ? { ubicaciones: parsed.ubicaciones } : {})
+            };
+        }
         
         // ===== VARIABLES GLOBALES =====
         let myLat = null, myLng = null;
@@ -2069,7 +2086,7 @@
             if (!navigator.onLine) {
                 console.log('Offline - usando datos locales');
                 const cached = localStorage.getItem('cloudData');
-                if (cached) { try { cloudData = JSON.parse(cached); useCloudData = true; } catch(e) {} }
+                if (cached) { try { cloudData = restaurarCloudDataDelCache(JSON.parse(cached)); useCloudData = true; } catch(e) {} }
                 return;
             }
             try {
@@ -2077,7 +2094,7 @@
                 if (result.error || !result.success) {
                     console.error('Sync error:', result.error);
                     const cached = localStorage.getItem('cloudData');
-                    if (cached) { try { cloudData = JSON.parse(cached); useCloudData = true; } catch(e) {} }
+                    if (cached) { try { cloudData = restaurarCloudDataDelCache(JSON.parse(cached)); useCloudData = true; } catch(e) {} }
                     showToast('⚠️ Usando datos locales');
                     return;
                 }
@@ -2175,6 +2192,27 @@
                     });
                 }
                 
+                // --- UBICACIONES (FIX 2026-05: nunca se cargaban, por eso se perdían) ---
+                // Estrategia: tomar las de la nube como verdad, pero si la nube no las
+                // trae (GAS aún no actualizado o llamada falló), mantener las locales.
+                const cloudUbicaciones = data.ubicaciones || [];
+                if (cloudUbicaciones.length > 0) {
+                    cloudData.ubicaciones = cloudUbicaciones;
+                    console.log(`✅ Ubicaciones cargadas de la nube: ${cloudUbicaciones.length}`);
+                } else {
+                    // Nube no trajo ubicaciones - preservar las que estaban en localStorage
+                    const cached = localStorage.getItem('cloudData');
+                    if (cached) {
+                        try {
+                            const cd = JSON.parse(cached);
+                            if (cd.ubicaciones && cd.ubicaciones.length > 0) {
+                                cloudData.ubicaciones = cd.ubicaciones;
+                                console.warn(`⚠️ Nube sin ubicaciones, preservando ${cd.ubicaciones.length} del cache local`);
+                            }
+                        } catch(e) {}
+                    }
+                }
+                
                 lastSyncTime = result.timestamp || new Date().toISOString();
                 localStorage.setItem('lastSyncTime', lastSyncTime);
                 localStorage.setItem('cloudData', JSON.stringify(cloudData));
@@ -2187,7 +2225,7 @@
             } catch (error) {
                 console.error('Initial sync failed:', error);
                 const cached = localStorage.getItem('cloudData');
-                if (cached) { try { cloudData = JSON.parse(cached); useCloudData = true; } catch(e) {} }
+                if (cached) { try { cloudData = restaurarCloudDataDelCache(JSON.parse(cached)); useCloudData = true; } catch(e) {} }
             }
         }
 
