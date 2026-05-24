@@ -2341,10 +2341,10 @@
                 console.log('Usando datos de la nube:', cloudData.clientes.length, 'clientes');
                 return cloudData.clientes.map(c => ({
                     ...c,
-                    Saldo: parseFloat(c.Saldo) || 0,
-                    SaldoOriginal: parseFloat(c.SaldoOriginal) || parseFloat(c.Saldo) || 0,
-                    Tarifa: parseFloat(c.Tarifa) || 0,
-                    'Días Atraso': parseInt(c['Días Atraso']) || 0
+                    Saldo: parseFloat(String(c.Saldo).replace(/,/g, '')) || 0,
+                    SaldoOriginal: parseFloat(String(c.SaldoOriginal).replace(/,/g, '')) || parseFloat(String(c.Saldo).replace(/,/g, '')) || 0,
+                    Tarifa: parseFloat(String(c.Tarifa).replace(/,/g, '')) || 0,
+                    'Días Atraso': parseInt(String(c['Días Atraso']).replace(/,/g, '')) || 0
                 }));
             }
             
