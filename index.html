@@ -2047,31 +2047,15 @@
                     catch (e) { return { error: 'Invalid response', raw: text }; }
                 }
                 
-                // POST con manejo correcto del redirect de GAS
-                // GAS devuelve 302 y el browser convierte POST→GET perdiendo el body
-                // Solución: hacer fetch manual siguiendo el redirect con POST
+                // POST simple - GAS maneja el redirect internamente cuando Content-Type es text/plain
                 const postOptions = {
                     method: 'POST',
-                    redirect: 'manual',
-                    headers: { 'Content-Type': 'text/plain' },
+                    redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify(data)
                 };
                 
                 const response = await fetch(url, postOptions);
-                
-                // GAS responde con 302 redirect - seguirlo manualmente con POST
-                if (response.type === 'opaqueredirect' || response.status === 0 || (response.status >= 300 && response.status < 400)) {
-                    const redirectUrl = response.headers.get('Location') || url;
-                    const response2 = await fetch(redirectUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'text/plain' },
-                        body: JSON.stringify(data)
-                    });
-                    const text = await response2.text();
-                    try { return JSON.parse(text); }
-                    catch (e) { return { error: 'Invalid response', raw: text }; }
-                }
-                
                 const text = await response.text();
                 try { return JSON.parse(text); }
                 catch (e) { return { error: 'Invalid response', raw: text }; }
