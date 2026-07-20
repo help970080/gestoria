@@ -2040,8 +2040,9 @@
                 let url = GOOGLE_SCRIPT_URL + '?action=' + encodeURIComponent(action);
                 
                 if (!data) {
-                    // GET simple
-                    const response = await fetch(url, { method: 'GET', redirect: 'follow' });
+                    // GET simple - FIX: romper caché para no leer saldos viejos de GAS/CDN
+                    const bustUrl = url + '&_ts=' + Date.now();
+                    const response = await fetch(bustUrl, { method: 'GET', redirect: 'follow', cache: 'no-store' });
                     const text = await response.text();
                     try { return JSON.parse(text); } 
                     catch (e) { return { error: 'Invalid response', raw: text }; }
